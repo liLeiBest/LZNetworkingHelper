@@ -14,7 +14,7 @@ PODS:
   - AFNetworking/Serialization (3.2.1)
   - AFNetworking/UIKit (3.2.1):
     - AFNetworking/NSURLSession
-  - LZNetworkingHelper (0.1.0):
+  - LZNetworkingHelper (1.0.0):
     - AFNetworking
 
 DEPENDENCIES:
@@ -30,7 +30,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   AFNetworking: b6f891fdfaed196b46c7a83cf209e09697b94057
-  LZNetworkingHelper: 11f744bc0995c1af57a8690d3020375d12a1f3dc
+  LZNetworkingHelper: 820a89bbc61e785d7ba5430db11588675fa1d30b
 
 PODFILE CHECKSUM: 82ee16d7f6f1f718f7a921f06ebf70bbd193b3b0
 
