@@ -12,11 +12,11 @@
 #define LZNetworking [LZNetworkingHelper sharedNetworkingHelper]
 
 /** 成功回调Block */
-typedef void (^successBlock)(id responseObject);
+typedef void (^LZNetworkSuccessBlock)(id responseObject);
 /** 失败回调Block */
-typedef void (^failureBlock)(NSError *error);
+typedef void (^LZNetworkFailureBlock)(NSError *error);
 /** 进度回调Block */
-typedef void (^progressBlock)(NSProgress *progress);
+typedef void (^LZNetworkProgressBlock)(NSProgress *progress);
 
 /** 重定向回调Block*/
 typedef NSURLRequest * (^LZURLSessionTaskWillPerformHTTPRedirectionBlock)(NSURLSession *session,
@@ -81,12 +81,14 @@ typedef void (^LZURLSessionTaskDidCompleteBlock)(NSURLSession *session,
  @param params      请求参数
  @param success     请求成功回调
  @param failure     请求失败回调
+ 
+ @return NSURLSessionDataTask
  */
-- (void)requestWithHttpMethod:(HttpMethodType)httpMethod
-                          url:(NSString *)urlString
-                       params:(NSDictionary *)params
-                      success:(successBlock)success
-                      failure:(failureBlock)failure;
+- (NSURLSessionDataTask *)requestWithHttpMethod:(HttpMethodType)httpMethod
+                                            url:(NSString *)urlString
+                                         params:(NSDictionary *)params
+                                        success:(LZNetworkSuccessBlock)success
+                                        failure:(LZNetworkFailureBlock)failure;
 
 /**
  @author Lilei
@@ -102,16 +104,18 @@ typedef void (^LZURLSessionTaskDidCompleteBlock)(NSURLSession *session,
  @param progress    进度回调
  @param success     请求成功回调
  @param failure     请求失败回调
+ 
+ @return NSURLSessionDataTask
  */
-- (void)POST:(NSString *)urlString
-      params:(NSDictionary *)params
-        data:(NSArray *)dataArrI
-        name:(NSString *)name
-    fileName:(NSString *)fileName
-    mimeType:(NSString *)mimeType
-    progress:(progressBlock)progress
-     success:(successBlock)success
-     failure:(failureBlock)failure;
+- (NSURLSessionDataTask *)POST:(NSString *)urlString
+                        params:(NSDictionary *)params
+                          data:(NSArray *)dataArrI
+                          name:(NSString *)name
+                      fileName:(NSString *)fileName
+                      mimeType:(NSString *)mimeType
+                      progress:(LZNetworkProgressBlock)progress
+                       success:(LZNetworkSuccessBlock)success
+                       failure:(LZNetworkFailureBlock)failure;
 
 /**
  @author Lilei
@@ -122,11 +126,13 @@ typedef void (^LZURLSessionTaskDidCompleteBlock)(NSURLSession *session,
  @param params      请求参数
  @param success     请求成功回调
  @param failure     请求失败回调
+ 
+ @return NSURLSessionDataTask
  */
-- (void)HEAD:(NSString *)urlString
-      params:(NSDictionary *)params
-     success:(successBlock)success
-     failure:(failureBlock)failure;
+- (NSURLSessionDataTask *)HEAD:(NSString *)urlString
+                        params:(NSDictionary *)params
+                       success:(LZNetworkSuccessBlock)success
+                       failure:(LZNetworkFailureBlock)failure;
 
 /**
  @author Lilei
@@ -137,11 +143,13 @@ typedef void (^LZURLSessionTaskDidCompleteBlock)(NSURLSession *session,
  @param params      请求参数
  @param success     请求成功回调
  @param failure     请求失败回调
+ 
+ @return NSURLSessionDataTask
  */
-- (void)PATCH:(NSString *)urlString
-       params:(NSDictionary *)params
-      success:(successBlock)success
-      failure:(failureBlock)failure;
+- (NSURLSessionDataTask *)PATCH:(NSString *)urlString
+                         params:(NSDictionary *)params
+                        success:(LZNetworkSuccessBlock)success
+                        failure:(LZNetworkFailureBlock)failure;
 
 #pragma mark - AFURLSessionManager
 /**
@@ -158,10 +166,10 @@ typedef void (^LZURLSessionTaskDidCompleteBlock)(NSURLSession *session,
  @return NSURLSessionDataTask
  */
 - (NSURLSessionDataTask *)dataTaskRequest:(NSURLRequest *)request
-                           uploadProgress:(progressBlock)uploadProgress
-                         downloadProgress:(progressBlock)downloadProgress
-                                  success:(successBlock)success
-                                  failure:(failureBlock)failure;
+                           uploadProgress:(LZNetworkProgressBlock)uploadProgress
+                         downloadProgress:(LZNetworkProgressBlock)downloadProgress
+                                  success:(LZNetworkSuccessBlock)success
+                                  failure:(LZNetworkFailureBlock)failure;
 
 /**
  @author Lilei
@@ -178,9 +186,9 @@ typedef void (^LZURLSessionTaskDidCompleteBlock)(NSURLSession *session,
  */
 - (NSURLSessionUploadTask *)uploadTaskRequest:(NSURLRequest *)request
                                    fromSource:(id)source
-                                     progress:(progressBlock)progress
-                                      success:(successBlock)success
-                                      failure:(failureBlock)failure;
+                                     progress:(LZNetworkProgressBlock)progress
+                                      success:(LZNetworkSuccessBlock)success
+                                      failure:(LZNetworkFailureBlock)failure;
 
 /**
  @author Lilei
@@ -193,9 +201,9 @@ typedef void (^LZURLSessionTaskDidCompleteBlock)(NSURLSession *session,
  @param failure     请求失败回调
  */
 - (NSURLSessionDownloadTask *)downloadTaskRequest:(NSURLRequest *)request
-                                         progress:(progressBlock)progress
-                                          success:(successBlock)success
-                                          failure:(failureBlock)failure;
+                                         progress:(LZNetworkProgressBlock)progress
+                                          success:(LZNetworkSuccessBlock)success
+                                          failure:(LZNetworkFailureBlock)failure;
 
 #pragma mark - AFNetworkingReachabilityManager
 /**

@@ -160,198 +160,208 @@
 
 #pragma mark - -> AFHTTPSessionManager
 /** http请求 */
-- (void)requestWithHttpMethod:(HttpMethodType)httpMethod
-                          url:(NSString *)urlString
-                       params:(NSDictionary *)params
-                      success:(successBlock)success
-                      failure:(failureBlock)failure {
+- (NSURLSessionDataTask *)requestWithHttpMethod:(HttpMethodType)httpMethod
+                                            url:(NSString *)urlString
+                                         params:(NSDictionary *)params
+                                        success:(LZNetworkSuccessBlock)success
+                                        failure:(LZNetworkFailureBlock)failure {
 	
     switch (httpMethod) {
         case HttpMethodTypePOST:
-            [self POST:urlString params:params success:success failure:failure];
+            return [self POST:urlString params:params success:success failure:failure];
             break;
         case HttpMethodTypeDELETE:
-            [self DELETE:urlString params:params success:success failure:failure];
+            return [self DELETE:urlString params:params success:success failure:failure];
             break;
         case HttpMethodTypePUT:
-            [self PUT:urlString params:params success:success failure:failure];
+            return [self PUT:urlString params:params success:success failure:failure];
             break;
         case HttpMethodTypeGET:
-            [self GET:urlString params:params success:success failure:failure];
+            return [self GET:urlString params:params success:success failure:failure];
             break;
     }
 }
 
 /** POST(multipart) */
-- (void)POST:(NSString *)urlString
-      params:(NSDictionary *)params
-        data:(NSArray *)dataArrI
-        name:(NSString *)name
-    fileName:(NSString *)fileName
-    mimeType:(NSString *)mimeType
-    progress:(progressBlock)progress
-     success:(successBlock)success
-     failure:(failureBlock)failure {
-	
-    [[self httpSessionManager] POST:urlString parameters:params constructingBodyWithBlock:
-	 ^(id<AFMultipartFormData> formData) {
-		 
-         [dataArrI enumerateObjectsUsingBlock:^(id  _Nonnull data, NSUInteger idx, BOOL * _Nonnull stop) {
-			 
-             NSError *error = nil;
-             if ([data isKindOfClass:[NSURL class]]) {
-                 [formData appendPartWithFileURL:data name:name fileName:fileName mimeType:mimeType error:&error];
-             } else if ([data isKindOfClass:[NSString class]]) {
-				 
-                 NSURL *fileURL = [NSURL fileURLWithPath:data];
-                 [formData appendPartWithFileURL:fileURL name:name fileName:fileName mimeType:mimeType error:&error];
-             } else if ([data isKindOfClass:[NSData class]]) {
-                 [formData appendPartWithFileData:data name:name fileName:fileName mimeType:mimeType];
-             }
-         }];
-     } progress:^(NSProgress * _Nonnull uploadProgress) {
-		 
-		 if ([NSThread isMainThread]) {
-			 if (progress) {
-				 progress(uploadProgress);
-			 }
-		 } else {
-			 
-			 dispatch_async(dispatch_get_main_queue(), ^{
-				 if (progress) {
-					 progress(uploadProgress);
-				 }
-			 });
-		 }
-	 } success:^(NSURLSessionDataTask *task, id responseObject) {
-		 if (success) {
-			 success(responseObject);
-		 }
-     } failure:^(NSURLSessionDataTask *task, NSError *error) {
-		 if (failure) {
-			 failure(error);
-		 }
-     }];
+- (NSURLSessionDataTask *)POST:(NSString *)urlString
+                        params:(NSDictionary *)params
+                          data:(NSArray *)dataArrI
+                          name:(NSString *)name
+                      fileName:(NSString *)fileName
+                      mimeType:(NSString *)mimeType
+                      progress:(LZNetworkProgressBlock)progress
+                       success:(LZNetworkSuccessBlock)success
+                       failure:(LZNetworkFailureBlock)failure {
+    
+    return [[self httpSessionManager]
+            POST:urlString
+            parameters:params
+            constructingBodyWithBlock:^(id<AFMultipartFormData> formData) {
+        [dataArrI enumerateObjectsUsingBlock:^(id  _Nonnull data, NSUInteger idx, BOOL * _Nonnull stop) {
+            
+            NSError *error = nil;
+            if ([data isKindOfClass:[NSURL class]]) {
+                [formData appendPartWithFileURL:data name:name fileName:fileName mimeType:mimeType error:&error];
+            } else if ([data isKindOfClass:[NSString class]]) {
+                
+                NSURL *fileURL = [NSURL fileURLWithPath:data];
+                [formData appendPartWithFileURL:fileURL name:name fileName:fileName mimeType:mimeType error:&error];
+            } else if ([data isKindOfClass:[NSData class]]) {
+                [formData appendPartWithFileData:data name:name fileName:fileName mimeType:mimeType];
+            }
+        }];
+    } progress:^(NSProgress * _Nonnull uploadProgress) {
+        if ([NSThread isMainThread]) {
+            if (progress) {
+                progress(uploadProgress);
+            }
+        } else {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (progress) {
+                    progress(uploadProgress);
+                }
+            });
+        }
+    } success:^(NSURLSessionDataTask *task, id responseObject) {
+        if (success) {
+            success(responseObject);
+        }
+    } failure:^(NSURLSessionDataTask *task, NSError *error) {
+        if (failure) {
+            failure(error);
+        }
+    }];
 }
 
 /** HEAD */
-- (void)HEAD:(NSString *)urlString
-      params:(NSDictionary *)params
-     success:(successBlock)success
-     failure:(failureBlock)failure {
-	
-    [[self httpSessionManager] HEAD:urlString parameters:params success:
-	 ^(NSURLSessionDataTask *task) {
-		 if (success) {
-			 success(task);
-		 }
-     } failure:^(NSURLSessionDataTask *task, NSError *error) {
-		 if (failure) {
-			 failure(error);
-		 }
-     }];
+- (NSURLSessionDataTask *)HEAD:(NSString *)urlString
+                        params:(NSDictionary *)params
+                       success:(LZNetworkSuccessBlock)success
+                       failure:(LZNetworkFailureBlock)failure {
+    
+    return [[self httpSessionManager]
+            HEAD:urlString
+            parameters:params
+            success:^(NSURLSessionDataTask *task) {
+        if (success) {
+            success(task);
+        }
+    } failure:^(NSURLSessionDataTask *task, NSError *error) {
+        if (failure) {
+            failure(error);
+        }
+    }];
 }
 
 /** PATCH */
-- (void)PATCH:(NSString *)urlString
-       params:(NSDictionary *)params
-      success:(successBlock)success
-      failure:(failureBlock)failure {
-	
-    [[self httpSessionManager] PATCH:urlString parameters:params success:
-	 ^(NSURLSessionDataTask *task, id responseObject) {
-		 if (success) {
-			 success(responseObject);
-		 }
-     } failure:^(NSURLSessionDataTask *task, NSError *error) {
-		 if (failure) {
-			 failure(error);
-		 }
-     }];
+- (NSURLSessionDataTask *)PATCH:(NSString *)urlString
+                         params:(NSDictionary *)params
+                        success:(LZNetworkSuccessBlock)success
+                        failure:(LZNetworkFailureBlock)failure {
+    
+    return [[self httpSessionManager]
+            PATCH:urlString
+            parameters:params
+            success:^(NSURLSessionDataTask *task, id responseObject) {
+        if (success) {
+            success(responseObject);
+        }
+    } failure:^(NSURLSessionDataTask *task, NSError *error) {
+        if (failure) {
+            failure(error);
+        }
+    }];
 }
 
 #pragma mark Private
 /** POST */
-- (void)POST:(NSString *)urlString
-      params:(NSDictionary *)params
-     success:(successBlock)success
-     failure:(failureBlock)failure {
-	
-    [[self httpSessionManager] POST:urlString parameters:params progress:
-	 ^(NSProgress *uploadProgress) {}
-     success:^(NSURLSessionDataTask *task, id responseObject) {
-		 if (success) {
-			 success(responseObject);
-		 }
-     } failure:^(NSURLSessionDataTask *task, NSError *error) {
-		 if (failure) {
-			 failure(error);
-		 }
-     }];
+- (NSURLSessionDataTask *)POST:(NSString *)urlString
+                        params:(NSDictionary *)params
+                       success:(LZNetworkSuccessBlock)success
+                       failure:(LZNetworkFailureBlock)failure {
+    
+    return [[self httpSessionManager]
+            POST:urlString
+            parameters:params
+            progress:^(NSProgress *uploadProgress) {}
+            success:^(NSURLSessionDataTask *task, id responseObject) {
+        if (success) {
+            success(responseObject);
+        }
+    } failure:^(NSURLSessionDataTask *task, NSError *error) {
+        if (failure) {
+            failure(error);
+        }
+    }];
 }
 
 /** DELETE */
-- (void)DELETE:(NSString *)urlString
-        params:(NSDictionary *)params
-       success:(successBlock)success
-       failure:(failureBlock)failure {
-	
-    [[self httpSessionManager] DELETE:urlString parameters:params success:
-	 ^(NSURLSessionDataTask *task, id responseObject) {
-		 if (success) {
-			 success(responseObject);
-		 }
-     } failure:^(NSURLSessionDataTask *task, NSError *error) {
-		 if (failure) {
-			 failure(error);
-		 }
-     }];
+- (NSURLSessionDataTask *)DELETE:(NSString *)urlString
+                          params:(NSDictionary *)params
+                         success:(LZNetworkSuccessBlock)success
+                         failure:(LZNetworkFailureBlock)failure {
+    
+    return [[self httpSessionManager]
+            DELETE:urlString
+            parameters:params
+            success:^(NSURLSessionDataTask *task, id responseObject) {
+        if (success) {
+            success(responseObject);
+        }
+    } failure:^(NSURLSessionDataTask *task, NSError *error) {
+        if (failure) {
+            failure(error);
+        }
+    }];
 }
 
 /** PUT */
-- (void)PUT:(NSString *)urlString
-     params:(NSDictionary *)params
-    success:(successBlock)success
-    failure:(failureBlock)failure {
-	
-    [[self httpSessionManager] PUT:urlString parameters:params success:
-	 ^(NSURLSessionDataTask *task, id responseObject) {
-		 if (success) {
-			 success(responseObject);
-		 }
-     } failure:^(NSURLSessionDataTask *task, NSError *error) {
-		 if (failure) {
-			 failure(error);
-		 }
-     }];
+- (NSURLSessionDataTask *)PUT:(NSString *)urlString
+                       params:(NSDictionary *)params
+                      success:(LZNetworkSuccessBlock)success
+                      failure:(LZNetworkFailureBlock)failure {
+    
+    return [[self httpSessionManager] PUT:urlString
+                               parameters:params
+                                  success:^(NSURLSessionDataTask *task, id responseObject) {
+        if (success) {
+            success(responseObject);
+        }
+    } failure:^(NSURLSessionDataTask *task, NSError *error) {
+        if (failure) {
+            failure(error);
+        }
+    }];
 }
 
 /** GET */
-- (void)GET:(NSString *)urlString
+- (NSURLSessionDataTask *)GET:(NSString *)urlString
      params:(NSDictionary *)params
-    success:(successBlock)success
-    failure:(failureBlock)failure {
-	
-    [[self httpSessionManager] GET:urlString parameters:params progress:
-	 ^(NSProgress *downloadProgress) {}
-     success:^(NSURLSessionDataTask *task, id responseObject) {
-		 if (success) {
-			 success(responseObject);
-		 }
-     } failure:^(NSURLSessionDataTask *task, NSError *error) {
-		 if (failure) {
-			 failure(error);
-		 }
-     }];
+    success:(LZNetworkSuccessBlock)success
+    failure:(LZNetworkFailureBlock)failure {
+    
+    return [[self httpSessionManager]
+            GET:urlString
+            parameters:params
+            progress:^(NSProgress *downloadProgress) {}
+            success:^(NSURLSessionDataTask *task, id responseObject) {
+        if (success) {
+            success(responseObject);
+        }
+    } failure:^(NSURLSessionDataTask *task, NSError *error) {
+        if (failure) {
+            failure(error);
+        }
+    }];
 }
 
 #pragma mark - -> AFURLSessionManager
 /** DataTask，有上传或下载进度 */
 - (NSURLSessionDataTask *)dataTaskRequest:(NSURLRequest *)request
-                           uploadProgress:(progressBlock)uploadProgressBlock
-                         downloadProgress:(progressBlock)downloadProgressBlock
-                                  success:(successBlock)success
-                                  failure:(failureBlock)failure {
+                           uploadProgress:(LZNetworkProgressBlock)uploadProgressBlock
+                         downloadProgress:(LZNetworkProgressBlock)downloadProgressBlock
+                                  success:(LZNetworkSuccessBlock)success
+                                  failure:(LZNetworkFailureBlock)failure {
 	
     NSURLSessionDataTask *dataTask =
     [[self urlSessionManager] dataTaskWithRequest:request uploadProgress:
@@ -402,9 +412,9 @@
 /** DataTask */
 - (NSURLSessionUploadTask *)uploadTaskRequest:(NSURLRequest *)request
                                    fromSource:(id)source
-                                     progress:(progressBlock)uploadProgress
-                                      success:(successBlock)success
-                                      failure:(failureBlock)failure {
+                                     progress:(LZNetworkProgressBlock)uploadProgress
+                                      success:(LZNetworkSuccessBlock)success
+                                      failure:(LZNetworkFailureBlock)failure {
 	
     if ([source isKindOfClass:[NSData class]])  {
         return [self uploadTaskRequest:request
@@ -436,8 +446,8 @@
 /** downloadTask */
 - (NSURLSessionDownloadTask *)downloadTaskRequest:(NSURLRequest *)request
                                          progress:(void (^)(NSProgress *))downloadProgressBlock
-                                          success:(successBlock)success
-                                          failure:(failureBlock)failure {
+                                          success:(LZNetworkSuccessBlock)success
+                                          failure:(LZNetworkFailureBlock)failure {
 	
     NSURLSessionDownloadTask *downloadTask =
     [[self urlSessionManager] downloadTaskWithRequest:request progress:
@@ -491,9 +501,9 @@
 /** UploadTask(NSURL) */
 - (NSURLSessionUploadTask *)uploadTaskRequest:(NSURLRequest *)request
                                      fromFile:(NSURL *)fileUrl
-                                     progress:(progressBlock)uploadProgressBlock
-                                      success:(successBlock)success
-                                      failure:(failureBlock)failure {
+                                     progress:(LZNetworkProgressBlock)uploadProgressBlock
+                                      success:(LZNetworkSuccessBlock)success
+                                      failure:(LZNetworkFailureBlock)failure {
 	
     NSURLSessionUploadTask *uploadTask =
     [[self urlSessionManager] uploadTaskWithRequest:request fromFile:fileUrl progress:
@@ -528,8 +538,8 @@
 - (NSURLSessionUploadTask *)uploadTaskRequest:(NSURLRequest *)request
                                      fromData:(NSData *)bodyData
                                      progress:(void (^)(NSProgress *))uploadProgressBlock
-                                      success:(successBlock)success
-                                      failure:(failureBlock)failure {
+                                      success:(LZNetworkSuccessBlock)success
+                                      failure:(LZNetworkFailureBlock)failure {
 	
     NSURLSessionUploadTask *uploadTask =
     [[self urlSessionManager] uploadTaskWithRequest:request fromData:bodyData progress:
@@ -562,9 +572,9 @@
 
 /** UploadTask */
 - (NSURLSessionUploadTask *)uploadTaskRequest:(NSURLRequest *)request
-                                     progress:(progressBlock)uploadProgressBlock
-                                      success:(successBlock)success
-                                      failure:(failureBlock)failure {
+                                     progress:(LZNetworkProgressBlock)uploadProgressBlock
+                                      success:(LZNetworkSuccessBlock)success
+                                      failure:(LZNetworkFailureBlock)failure {
 	
     NSURLSessionUploadTask *uploadTask =
     [[self urlSessionManager] uploadTaskWithStreamedRequest:request progress:
