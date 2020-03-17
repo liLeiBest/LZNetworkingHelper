@@ -16,7 +16,9 @@
 
 @end
 
-@implementation LZNetworkingHelper
+@implementation LZNetworkingHelper{
+    NSDateFormatter *_dateFmt;
+}
 
 #pragma mark - -> initialization
 - (instancetype)init {
@@ -198,15 +200,69 @@
             parameters:params
             constructingBodyWithBlock:^(id<AFMultipartFormData> formData) {
         [dataArrI enumerateObjectsUsingBlock:^(id  _Nonnull data, NSUInteger idx, BOOL * _Nonnull stop) {
-            
-            NSError *error = nil;
             if ([data isKindOfClass:[NSURL class]]) {
-                [formData appendPartWithFileURL:data name:name fileName:fileName mimeType:mimeType error:&error];
+                [formData appendPartWithFileURL:data name:name fileName:fileName mimeType:mimeType error:NULL];
             } else if ([data isKindOfClass:[NSString class]]) {
                 
                 NSURL *fileURL = [NSURL fileURLWithPath:data];
-                [formData appendPartWithFileURL:fileURL name:name fileName:fileName mimeType:mimeType error:&error];
+                [formData appendPartWithFileURL:fileURL name:name fileName:fileName mimeType:mimeType error:NULL];
             } else if ([data isKindOfClass:[NSData class]]) {
+                [formData appendPartWithFileData:data name:name fileName:fileName mimeType:mimeType];
+            }
+        }];
+    } progress:^(NSProgress * _Nonnull uploadProgress) {
+        if ([NSThread isMainThread]) {
+            if (progress) {
+                progress(uploadProgress);
+            }
+        } else {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (progress) {
+                    progress(uploadProgress);
+                }
+            });
+        }
+    } success:^(NSURLSessionDataTask *task, id responseObject) {
+        if (success) {
+            success(responseObject);
+        }
+    } failure:^(NSURLSessionDataTask *task, NSError *error) {
+        if (failure) {
+            failure(error);
+        }
+    }];
+}
+
+- (NSURLSessionDataTask *)POSTMultipartFormData:(NSString *)urlString
+                                         params:(NSDictionary *)params
+                                           data:(NSArray *)dataArrI
+                                           name:(NSString *)name
+                                       mimeType:(NSString *)mimeType
+                                       progress:(LZNetworkProgressBlock)progress
+                                        success:(LZNetworkSuccessBlock)success
+                                        failure:(LZNetworkFailureBlock)failure {
+    return [[self httpSessionManager]
+            POST:urlString
+            parameters:params
+            constructingBodyWithBlock:^(id<AFMultipartFormData> formData) {
+        [dataArrI enumerateObjectsUsingBlock:^(id  _Nonnull data, NSUInteger idx, BOOL * _Nonnull stop) {
+            if ([data isKindOfClass:[NSURL class]]) {
+                
+                NSString *fileName = [(NSURL *)data lastPathComponent];
+                [formData appendPartWithFileURL:data name:name fileName:fileName mimeType:mimeType error:NULL];
+            } else if ([data isKindOfClass:[NSString class]]) {
+                
+                NSURL *fileURL = [NSURL fileURLWithPath:data];
+                NSString *fileName = [(NSURL *)data lastPathComponent];
+                [formData appendPartWithFileURL:fileURL name:name fileName:fileName mimeType:mimeType error:NULL];
+            } else if ([data isKindOfClass:[NSData class]]) {
+                if (nil == self->_dateFmt) {
+                    
+                    self->_dateFmt = [[NSDateFormatter alloc] init];
+                    self->_dateFmt.dateFormat = @"yyyy-MM-ddHH:mm:ss:SSS";
+                }
+                NSString *fileName = [self->_dateFmt stringFromDate:[NSDate date]];
+                fileName = [NSString stringWithFormat:@"%@.png", fileName];
                 [formData appendPartWithFileData:data name:name fileName:fileName mimeType:mimeType];
             }
         }];

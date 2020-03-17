@@ -120,6 +120,31 @@ typedef void (^LZURLSessionTaskDidCompleteBlock)(NSURLSession *session,
 /**
  @author Lilei
  
+ @brief a multipart POST
+ 
+ @param urlString   请求地址
+ @param params      请求参数
+ @param dataArrI    要发送的二进制文件列表
+ @param name        请求参数中二进制文件的名字
+ @param mimeType    告诉服务器上传文件的类型
+ @param progress    进度回调
+ @param success     请求成功回调
+ @param failure     请求失败回调
+ 
+ @return NSURLSessionDataTask
+ */
+- (NSURLSessionDataTask *)POSTMultipartFormData:(NSString *)urlString
+                                         params:(NSDictionary *)params
+                                           data:(NSArray *)dataArrI
+                                           name:(NSString *)name
+                                       mimeType:(NSString *)mimeType
+                                       progress:(LZNetworkProgressBlock)progress
+                                        success:(LZNetworkSuccessBlock)success
+                                        failure:(LZNetworkFailureBlock)failure;
+
+/**
+ @author Lilei
+ 
  @brief HEAD
  
  @param urlString   请求地址

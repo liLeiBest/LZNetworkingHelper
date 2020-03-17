@@ -21,7 +21,7 @@ DEPENDENCIES:
   - LZNetworkingHelper (from `../`)
 
 SPEC REPOS:
-  https://github.com/cocoapods/specs.git:
+  trunk:
     - AFNetworking
 
 EXTERNAL SOURCES:
@@ -34,4 +34,4 @@ SPEC CHECKSUMS:
 
 PODFILE CHECKSUM: 82ee16d7f6f1f718f7a921f06ebf70bbd193b3b0
 
-COCOAPODS: 1.7.5
+COCOAPODS: 1.9.0
