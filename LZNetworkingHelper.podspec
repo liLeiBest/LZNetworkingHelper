@@ -2,9 +2,9 @@
 Pod::Spec.new do |s|
 	s.name             = 'LZNetworkingHelper'
 	s.version          = '1.0.3'
-	s.summary          = 'A short description of LZNetworkingHelper.'
+	s.summary          = 'LZNetworkingHelper.'
 	s.description      = <<-DESC
-	TODO: Add long description of the pod here.
+	网络请求
 	DESC
 	
 	s.homepage         = 'https://github.com/lilei_hapy@163.com/LZNetworkingHelper'
