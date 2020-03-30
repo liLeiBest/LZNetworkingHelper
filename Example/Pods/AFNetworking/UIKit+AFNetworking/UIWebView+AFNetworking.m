@@ -1,4 +1,4 @@
-// WkWebView+AFNetworking.m
+// UIWebView+AFNetworking.m
 // Copyright (c) 2011–2016 Alamofire Software Foundation ( http://alamofire.org/ )
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -19,7 +19,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#import "WKWebView+AFNetworking.h"
+#import "UIWebView+AFNetworking.h"
 
 #import <objc/runtime.h>
 
@@ -29,11 +29,11 @@
 #import "AFURLResponseSerialization.h"
 #import "AFURLRequestSerialization.h"
 
-@interface WKWebView (_AFNetworking)
+@interface UIWebView (_AFNetworking)
 @property (readwrite, nonatomic, strong, setter = af_setURLSessionTask:) NSURLSessionDataTask *af_URLSessionTask;
 @end
 
-@implementation WKWebView (_AFNetworking)
+@implementation UIWebView (_AFNetworking)
 
 - (NSURLSessionDataTask *)af_URLSessionTask {
     return (NSURLSessionDataTask *)objc_getAssociatedObject(self, @selector(af_URLSessionTask));
@@ -47,9 +47,9 @@
 
 #pragma mark -
 
-@implementation WKWebView (AFNetworking)
+@implementation UIWebView (AFNetworking)
 
-- (AFHTTPSessionManager *)sessionManager {
+- (AFHTTPSessionManager  *)sessionManager {
     static AFHTTPSessionManager *_af_defaultHTTPSessionManager = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
@@ -57,7 +57,7 @@
         _af_defaultHTTPSessionManager.requestSerializer = [AFHTTPRequestSerializer serializer];
         _af_defaultHTTPSessionManager.responseSerializer = [AFHTTPResponseSerializer serializer];
     });
-    
+
     return objc_getAssociatedObject(self, @selector(sessionManager)) ?: _af_defaultHTTPSessionManager;
 }
 
@@ -71,7 +71,7 @@
     dispatch_once(&onceToken, ^{
         _af_defaultResponseSerializer = [AFHTTPResponseSerializer serializer];
     });
-    
+
     return objc_getAssociatedObject(self, @selector(responseSerializer)) ?: _af_defaultResponseSerializer;
 }
 
@@ -82,11 +82,11 @@
 #pragma mark -
 
 - (void)loadRequest:(NSURLRequest *)request
-         navigation:(WKNavigation * _Nonnull)navigation
            progress:(NSProgress * _Nullable __autoreleasing * _Nullable)progress
-            success:(nullable NSString * (^)(NSHTTPURLResponse *response, NSString *HTML))success
-            failure:(nullable void (^)(NSError *error))failure {
-    [self loadRequest:request navigation:navigation MIMEType:nil textEncodingName:nil progress:progress success:^NSData * _Nonnull(NSHTTPURLResponse * _Nonnull response, NSData * _Nonnull data) {
+            success:(NSString * (^)(NSHTTPURLResponse *response, NSString *HTML))success
+            failure:(void (^)(NSError *error))failure
+{
+    [self loadRequest:request MIMEType:nil textEncodingName:nil progress:progress success:^NSData *(NSHTTPURLResponse *response, NSData *data) {
         NSStringEncoding stringEncoding = NSUTF8StringEncoding;
         if (response.textEncodingName) {
             CFStringEncoding encoding = CFStringConvertIANACharSetNameToEncoding((CFStringRef)response.textEncodingName);
@@ -94,58 +94,61 @@
                 stringEncoding = CFStringConvertEncodingToNSStringEncoding(encoding);
             }
         }
-        
+
         NSString *string = [[NSString alloc] initWithData:data encoding:stringEncoding];
         if (success) {
             string = success(response, string);
         }
-        
+
         return [string dataUsingEncoding:stringEncoding];
     } failure:failure];
 }
 
 - (void)loadRequest:(NSURLRequest *)request
-         navigation:(WKNavigation * _Nonnull)navigation
-           MIMEType:(nullable NSString *)MIMEType
-   textEncodingName:(nullable NSString *)textEncodingName
+           MIMEType:(NSString *)MIMEType
+   textEncodingName:(NSString *)textEncodingName
            progress:(NSProgress * _Nullable __autoreleasing * _Nullable)progress
-            success:(nullable NSData * (^)(NSHTTPURLResponse *response, NSData *data))success
-            failure:(nullable void (^)(NSError *error))failure {
+            success:(NSData * (^)(NSHTTPURLResponse *response, NSData *data))success
+            failure:(void (^)(NSError *error))failure
+{
     NSParameterAssert(request);
-    
+
     if (self.af_URLSessionTask.state == NSURLSessionTaskStateRunning || self.af_URLSessionTask.state == NSURLSessionTaskStateSuspended) {
         [self.af_URLSessionTask cancel];
     }
     self.af_URLSessionTask = nil;
-    
+
     __weak __typeof(self)weakSelf = self;
     __block NSURLSessionDataTask *dataTask;
-    __strong __typeof(weakSelf) strongSelf = weakSelf;
-    __strong __typeof(weakSelf.navigationDelegate) strongSelfDelegate = strongSelf.navigationDelegate;
-    dataTask = [self.sessionManager dataTaskWithRequest:request uploadProgress:nil downloadProgress:nil completionHandler:^(NSURLResponse * _Nonnull response, id  _Nullable responseObject, NSError * _Nullable error) {
-        if (error) {
-            if (failure) {
-                failure(error);
-            }
-        } else {
-            if (success) {
-                success((NSHTTPURLResponse *)response, responseObject);
-            }
-            [strongSelf loadData:responseObject MIMEType:MIMEType characterEncodingName:textEncodingName baseURL:[dataTask.currentRequest URL]];
-            
-            if ([strongSelfDelegate respondsToSelector:@selector(webView:didFinishNavigation:)]) {
-                [strongSelfDelegate webView:strongSelf didFinishNavigation:navigation];
-            }
-        }
-    }];
+    dataTask = [self.sessionManager
+                dataTaskWithRequest:request
+                uploadProgress:nil
+                downloadProgress:nil
+                completionHandler:^(NSURLResponse * _Nonnull response, id  _Nonnull responseObject, NSError * _Nullable error) {
+                    __strong __typeof(weakSelf) strongSelf = weakSelf;
+                    if (error) {
+                        if (failure) {
+                            failure(error);
+                        }
+                    } else {
+                        if (success) {
+                            success((NSHTTPURLResponse *)response, responseObject);
+                        }
+                        [strongSelf loadData:responseObject MIMEType:MIMEType textEncodingName:textEncodingName baseURL:[dataTask.currentRequest URL]];
+
+                        if ([strongSelf.delegate respondsToSelector:@selector(webViewDidFinishLoad:)]) {
+                            [strongSelf.delegate webViewDidFinishLoad:strongSelf];
+                        }
+                    }
+                }];
     self.af_URLSessionTask = dataTask;
     if (progress != nil) {
         *progress = [self.sessionManager downloadProgressForTask:dataTask];
     }
     [self.af_URLSessionTask resume];
-    
-    if ([strongSelfDelegate respondsToSelector:@selector(webView:didStartProvisionalNavigation:)]) {
-        [strongSelfDelegate webView:self didStartProvisionalNavigation:navigation];
+
+    if ([self.delegate respondsToSelector:@selector(webViewDidStartLoad:)]) {
+        [self.delegate webViewDidStartLoad:self];
     }
 }
 

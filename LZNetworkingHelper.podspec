@@ -1,7 +1,7 @@
 
 Pod::Spec.new do |s|
 	s.name             = 'LZNetworkingHelper'
-	s.version          = '1.0.2'
+	s.version          = '1.0.3'
 	s.summary          = 'A short description of LZNetworkingHelper.'
 	s.description      = <<-DESC
 	TODO: Add long description of the pod here.
@@ -13,11 +13,11 @@ Pod::Spec.new do |s|
 	s.source           = { :git => 'https://github.com/liLeiBest/LZNetworkingHelper.git', :tag => s.version.to_s }
 	
 	s.frameworks            = 'Foundation', 'UIKit'
-	s.ios.deployment_target = '8.0'
+	s.ios.deployment_target = '9.0'
 	
 	s.source_files			= 'LZNetworkingHelper/Classes/*.{h,m}'
 	s.public_header_files	= 'LZNetworkingHelper/Classes/*.h'
-	s.dependency 'AFNetworking'
+	s.dependency 'AFNetworking','3.2.1'
 	
 	pch_AF = <<-EOS
 	#if DEBUG
