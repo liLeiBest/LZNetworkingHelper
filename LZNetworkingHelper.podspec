@@ -4,7 +4,9 @@ Pod::Spec.new do |s|
 	s.version          = '2.0.0'
 	s.summary          = 'LZNetworkingHelper.'
 	s.description      = <<-DESC
-	网络请求
+	网络请求：
+    1.HTTP Request
+    2.Network Status
 	DESC
 	
 	s.homepage         = 'https://github.com/liLeiBest'

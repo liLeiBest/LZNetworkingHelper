@@ -2,7 +2,7 @@
   "name": "LZNetworkingHelper",
   "version": "2.0.0",
   "summary": "LZNetworkingHelper.",
-  "description": "网络请求",
+  "description": "网络请求：\n   1.HTTP Request\n   2.Network Status",
   "homepage": "https://github.com/liLeiBest",
   "license": {
     "type": "MIT",
