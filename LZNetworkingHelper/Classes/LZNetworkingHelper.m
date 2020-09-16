@@ -20,118 +20,85 @@
     NSDateFormatter *_dateFmt;
 }
 
-#pragma mark - -> initialization
+// MARK: - initialization -
 - (instancetype)init {
-	
-    self = [super init];
-    if (self){
+    if (self = [super init]){
         _timeoutInterval = 15;
     }
     return self;
 }
 
-+ (instancetype)sharedNetworkingHelper {
-	
-    static LZNetworkingHelper *_instance = nil;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-		_instance = [[LZNetworkingHelper alloc] init];
-	});
-    
-    return _instance;
-}
-
-#pragma mark - -> LazyLoading
+// MARK: - LazyLoading -
+/**
+ 要使用常规的AFN网络访问
+ 
+ 1. AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+ 所有的网络请求,均有manager发起
+ 
+ 2. 需要注意的是,默认提交请求的数据是二进制的,返回格式是JSON
+ 1> 如果提交数据是JSON的,需要将请求格式设置为AFJSONRequestSerializer
+ 2> 如果返回格式不是JSON的,
+ 
+ 3. 请求格式
+ AFHTTPRequestSerializer            二进制格式
+ AFJSONRequestSerializer            JSON
+ AFPropertyListRequestSerializer    PList(是一种特殊的XML,解析起来相对容易)
+ 
+ 4. 返回格式
+ AFHTTPResponseSerializer           二进制格式
+ AFJSONResponseSerializer           JSON
+ AFXMLParserResponseSerializer      XML,只能返回XMLParser,还需要自己通过代理方法解析
+ AFXMLDocumentResponseSerializer (Mac OS X)
+ AFPropertyListResponseSerializer   PList
+ AFImageResponseSerializer          Image
+ AFCompoundResponseSerializer       组合
+ */
 - (AFHTTPSessionManager *)httpSessionManager {
-	
-    /**
-     要使用常规的AFN网络访问
-     
-     1. AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
-     
-     所有的网络请求,均有manager发起
-     
-     2. 需要注意的是,默认提交请求的数据是二进制的,返回格式是JSON
-     
-     1> 如果提交数据是JSON的,需要将请求格式设置为AFJSONRequestSerializer
-     2> 如果返回格式不是JSON的,
-     
-     3. 请求格式
-     
-     AFHTTPRequestSerializer            二进制格式
-     AFJSONRequestSerializer            JSON
-     AFPropertyListRequestSerializer    PList(是一种特殊的XML,解析起来相对容易)
-     
-     4. 返回格式
-     
-     AFHTTPResponseSerializer           二进制格式
-     AFJSONResponseSerializer           JSON
-     AFXMLParserResponseSerializer      XML,只能返回XMLParser,还需要自己通过代理方法解析
-     AFXMLDocumentResponseSerializer (Mac OS X)
-     AFPropertyListResponseSerializer   PList
-     AFImageResponseSerializer          Image
-     AFCompoundResponseSerializer       组合
-     */
-    
     if (_httpSessionManager == nil) {
 		
         NSURLSessionConfiguration *sessionConfiguration = [NSURLSessionConfiguration defaultSessionConfiguration];
-        _httpSessionManager = [[AFHTTPSessionManager alloc] initWithBaseURL:[NSURL URLWithString:@"https://xxx.xx"] sessionConfiguration:sessionConfiguration];
+        _httpSessionManager = [[AFHTTPSessionManager alloc] initWithBaseURL:[NSURL URLWithString:@"https://lz.network"] sessionConfiguration:sessionConfiguration];
         _httpSessionManager.requestSerializer = [AFJSONRequestSerializer serializer];
         _httpSessionManager.responseSerializer = [AFHTTPResponseSerializer serializer];
         _httpSessionManager.requestSerializer.timeoutInterval = self.timeoutInterval;
     }
-    
     return _httpSessionManager;
 }
 
 - (AFURLSessionManager *)urlSessionManager {
-	
     if (_urlSessionManager == nil) {
 		
         NSURLSessionConfiguration *sessionConfiguration = [NSURLSessionConfiguration defaultSessionConfiguration];
         _urlSessionManager = [[AFURLSessionManager alloc] initWithSessionConfiguration:sessionConfiguration];
 		_urlSessionManager.responseSerializer = [AFJSONResponseSerializer serializer];
-		
         __weak typeof(self) weakSelf = self;
-        [_urlSessionManager setTaskWillPerformHTTPRedirectionBlock:
-		 ^NSURLRequest *(NSURLSession *session, NSURLSessionTask *task, NSURLResponse *response, NSURLRequest *request) {
-			 
-			 if (weakSelf.taskWillPerformHTTPRedirection) {
-				 return weakSelf.taskWillPerformHTTPRedirection(session, task, response, request);
-			 }
-             return request;
-         }];
-        
-        [_urlSessionManager setDataTaskDidReceiveDataBlock:
-		 ^(NSURLSession *session,  NSURLSessionDataTask *dataTask, NSData *data) {
-			 
-			 if (weakSelf.dataTaskDidReceiveData) {
-				 weakSelf.dataTaskDidReceiveData(session, dataTask, data);
-			 }
-         }];
-        
-        [_urlSessionManager setDataTaskDidReceiveResponseBlock:
-		 ^NSURLSessionResponseDisposition(NSURLSession *session, NSURLSessionDataTask *dataTask, NSURLResponse *response) {
-			 
-			 if (weakSelf.dataTaskDidReceiveResponse) {
-				 return weakSelf.dataTaskDidReceiveResponse(session, dataTask, response);
-			 }
-             return NSURLSessionResponseAllow;
-         }];
-        
-        [_urlSessionManager setTaskDidCompleteBlock:
-		 ^(NSURLSession *session, NSURLSessionTask *task, NSError *error) {
-			 
-			 if (weakSelf.taskDidComplete) {
-				 weakSelf.taskDidComplete(session, task, error);
-			 }
-		 }];
+        [_urlSessionManager setTaskWillPerformHTTPRedirectionBlock:^NSURLRequest *(NSURLSession *session, NSURLSessionTask *task, NSURLResponse *response, NSURLRequest *request) {
+            if (weakSelf.taskWillPerformHTTPRedirection) {
+                return weakSelf.taskWillPerformHTTPRedirection(session, task, response, request);
+            }
+            return request;
+        }];
+        [_urlSessionManager setDataTaskDidReceiveDataBlock:^(NSURLSession *session,  NSURLSessionDataTask *dataTask, NSData *data) {
+            if (weakSelf.dataTaskDidReceiveData) {
+                weakSelf.dataTaskDidReceiveData(session, dataTask, data);
+            }
+        }];
+        [_urlSessionManager setDataTaskDidReceiveResponseBlock:^NSURLSessionResponseDisposition(NSURLSession *session, NSURLSessionDataTask *dataTask, NSURLResponse *response) {
+            if (weakSelf.dataTaskDidReceiveResponse) {
+                return weakSelf.dataTaskDidReceiveResponse(session, dataTask, response);
+            }
+            return NSURLSessionResponseAllow;
+        }];
+        [_urlSessionManager setTaskDidCompleteBlock:^(NSURLSession *session, NSURLSessionTask *task, NSError *error) {
+            if (weakSelf.taskDidComplete) {
+                weakSelf.taskDidComplete(session, task, error);
+            }
+        }];
     }
-    
     return _urlSessionManager;
 }
 
+// MARK: - Setter -
 - (void)setCerFilePath:(NSString *)cerFilePath {
     _cerFilePath = cerFilePath;
     
@@ -144,8 +111,8 @@
     self.httpSessionManager.requestSerializer.timeoutInterval = _timeoutInterval;
 }
 
+#if 0
 - (void)setCustomRequestHeader:(NSDictionary *)customRequestHeader {
-	
 	if (nil == customRequestHeader || 0 == customRequestHeader.count) {
 		[_customRequestHeader enumerateKeysAndObjectsUsingBlock:^(id  _Nonnull key, id  _Nonnull obj, BOOL * _Nonnull stop) {
 			[self.httpSessionManager.requestSerializer setValue:nil forHTTPHeaderField:key];
@@ -159,112 +126,115 @@
 		}];
 	}
 }
+#endif
 
-#pragma mark - -> AFHTTPSessionManager
-/** http请求 */
-- (NSURLSessionDataTask *)requestWithHttpMethod:(HttpMethodType)httpMethod
-                                            url:(NSString *)urlString
-                                         params:(NSDictionary *)params
-                                        success:(LZNetworkSuccessBlock)success
-                                        failure:(LZNetworkFailureBlock)failure {
-	
-    switch (httpMethod) {
+// MARK: - Public -
+// MARK: <单例>
++ (instancetype)sharedNetworkingHelper {
+    
+    static LZNetworkingHelper *_instance = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        _instance = [[LZNetworkingHelper alloc] init];
+    });
+    return _instance;
+}
+
+// MARK: <AFHTTPSessionManager>
+- (NSURLSessionDataTask *)requestMethod:(LZHTTPRequestMethod)requestMethod
+                              urlString:(NSString *)urlString
+                             parameters:(id)parameters
+                                headers:(NSDictionary<NSString *,NSString *> *)headers
+                                success:(LZNetworkSuccessBlock)successHandler
+                                failure:(LZNetworkFailureBlock)failureHandler {
+    
+    headers = headers ?: self.customRequestHeader;
+    switch (requestMethod) {
         case HttpMethodTypePOST:
-            return [self POST:urlString params:params success:success failure:failure];
+            return [self POST:urlString params:parameters headers:headers success:successHandler failure:failureHandler];
             break;
         case HttpMethodTypeDELETE:
-            return [self DELETE:urlString params:params success:success failure:failure];
+            return [self DELETE:urlString params:parameters headers:headers success:successHandler failure:failureHandler];
             break;
         case HttpMethodTypePUT:
-            return [self PUT:urlString params:params success:success failure:failure];
+            return [self PUT:urlString params:parameters headers:headers success:successHandler failure:failureHandler];
             break;
         case HttpMethodTypeGET:
-            return [self GET:urlString params:params success:success failure:failure];
+            return [self GET:urlString params:parameters headers:headers success:successHandler failure:failureHandler];
+            break;
+        case LZHTTPRequestHEAD:
+            return [self HEAD:urlString params:parameters headers:headers success:successHandler failure:failureHandler];
+            break;
+        case LZHTTPRequestPATCH:
+            return [self PATCH:urlString params:parameters headers:headers success:successHandler failure:failureHandler];
             break;
     }
 }
 
-/** POST(multipart) */
 - (NSURLSessionDataTask *)POST:(NSString *)urlString
-                        params:(NSDictionary *)params
-                          data:(NSArray *)dataArrI
-                          name:(NSString *)name
-                      fileName:(NSString *)fileName
-                      mimeType:(NSString *)mimeType
+                    parameters:(id)parameters
+                       headers:(NSDictionary<NSString *,NSString *> *)headers
+                multipartForms:(NSArray<LZMultipartDataModel *> *)multipartForms
                       progress:(LZNetworkProgressBlock)progress
                        success:(LZNetworkSuccessBlock)success
                        failure:(LZNetworkFailureBlock)failure {
     
-    return [[self httpSessionManager]
-            POST:urlString
-            parameters:params
-            constructingBodyWithBlock:^(id<AFMultipartFormData> formData) {
-        [dataArrI enumerateObjectsUsingBlock:^(id  _Nonnull data, NSUInteger idx, BOOL * _Nonnull stop) {
-            if ([data isKindOfClass:[NSURL class]]) {
-                [formData appendPartWithFileURL:data name:name fileName:fileName mimeType:mimeType error:NULL];
-            } else if ([data isKindOfClass:[NSString class]]) {
+    headers = headers ?: self.customRequestHeader;
+    return [[self httpSessionManager] POST:urlString parameters:parameters headers:headers constructingBodyWithBlock:^(id<AFMultipartFormData> formData) {
+        [multipartForms enumerateObjectsUsingBlock:^(LZMultipartDataModel * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+            if ([obj.data isKindOfClass:[NSURL class]]) {
                 
-                NSURL *fileURL = [NSURL fileURLWithPath:data];
-                [formData appendPartWithFileURL:fileURL name:name fileName:fileName mimeType:mimeType error:NULL];
-            } else if ([data isKindOfClass:[NSData class]]) {
-                [formData appendPartWithFileData:data name:name fileName:fileName mimeType:mimeType];
-            }
-        }];
-    } progress:^(NSProgress * _Nonnull uploadProgress) {
-        if ([NSThread isMainThread]) {
-            if (progress) {
-                progress(uploadProgress);
-            }
-        } else {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                if (progress) {
-                    progress(uploadProgress);
-                }
-            });
-        }
-    } success:^(NSURLSessionDataTask *task, id responseObject) {
-        if (success) {
-            success(responseObject);
-        }
-    } failure:^(NSURLSessionDataTask *task, NSError *error) {
-        if (failure) {
-            failure(error);
-        }
-    }];
-}
-
-- (NSURLSessionDataTask *)POSTMultipartFormData:(NSString *)urlString
-                                         params:(NSDictionary *)params
-                                           data:(NSArray *)dataArrI
-                                           name:(NSString *)name
-                                       mimeType:(NSString *)mimeType
-                                       progress:(LZNetworkProgressBlock)progress
-                                        success:(LZNetworkSuccessBlock)success
-                                        failure:(LZNetworkFailureBlock)failure {
-    return [[self httpSessionManager]
-            POST:urlString
-            parameters:params
-            constructingBodyWithBlock:^(id<AFMultipartFormData> formData) {
-        [dataArrI enumerateObjectsUsingBlock:^(id  _Nonnull data, NSUInteger idx, BOOL * _Nonnull stop) {
-            if ([data isKindOfClass:[NSURL class]]) {
-                
-                NSString *fileName = [(NSURL *)data lastPathComponent];
-                [formData appendPartWithFileURL:data name:name fileName:fileName mimeType:mimeType error:NULL];
-            } else if ([data isKindOfClass:[NSString class]]) {
-                
-                NSURL *fileURL = [NSURL fileURLWithPath:data];
-                NSString *fileName = [(NSURL *)data lastPathComponent];
-                [formData appendPartWithFileURL:fileURL name:name fileName:fileName mimeType:mimeType error:NULL];
-            } else if ([data isKindOfClass:[NSData class]]) {
-                if (nil == self->_dateFmt) {
+                NSString *fileName = @"";
+                if (obj.fileName && obj.fileName.length) {
                     
-                    self->_dateFmt = [[NSDateFormatter alloc] init];
-                    self->_dateFmt.dateFormat = @"yyyy-MM-ddHH:mm:ss:SSS";
+                    fileName = obj.fileName;
+                    if (obj.extensionName && obj.extensionName.length) {
+                        fileName = [NSString stringWithFormat:@"%@.%@", fileName, obj.extensionName];
+                    }
+                } else {
+                    fileName = [(NSURL *)obj.data lastPathComponent];
                 }
-                NSString *fileName = [self->_dateFmt stringFromDate:[NSDate date]];
-                fileName = [NSString stringWithFormat:@"%@.png", fileName];
-                [formData appendPartWithFileData:data name:name fileName:fileName mimeType:mimeType];
-            }
+                [formData appendPartWithFileURL:obj.data name:obj.name fileName:fileName mimeType:obj.mimeType error:NULL];
+            } else if ([obj.data isKindOfClass:[NSString class]]) {
+                
+                NSURL *fileURL = [NSURL fileURLWithPath:obj.data];
+                NSString *fileName = @"";
+                if (obj.fileName && obj.fileName.length) {
+                    
+                    fileName = obj.fileName;
+                    if (obj.extensionName && obj.extensionName.length) {
+                        fileName = [NSString stringWithFormat:@"%@.%@", fileName, obj.extensionName];
+                    }
+                } else {
+                    fileName = [fileURL lastPathComponent];
+                }
+                [formData appendPartWithFileURL:obj.data name:obj.name fileName:fileName mimeType:obj.mimeType error:NULL];
+            } else if ([obj.data isKindOfClass:[NSData class]]) {
+                if (nil == obj.mimeType) {
+                    [formData appendPartWithFormData:obj.data name:obj.name];
+                } else {
+                    
+                    NSString *fileName = @"";
+                    if (obj.fileName && obj.fileName.length) {
+                        fileName = obj.fileName;
+                    } else {
+                        if (nil == self->_dateFmt) {
+                            
+                            self->_dateFmt = [[NSDateFormatter alloc] init];
+                            self->_dateFmt.dateFormat = @"yyyy-MM-ddHH:mm:ss:SSS";
+                        }
+                        fileName = [self->_dateFmt stringFromDate:[NSDate date]];
+                    }
+                    if (obj.extensionName && obj.extensionName.length) {
+                        fileName = [NSString stringWithFormat:@"%@.%@", fileName, obj.extensionName];
+                    }
+                    [formData appendPartWithFileData:obj.data name:obj.name fileName:fileName mimeType:obj.mimeType];
+                }
+             } else if ([obj.data isKindOfClass:[NSInputStream class]]) {
+             
+                 NSString *fileName = [NSString stringWithFormat:@"%@.%@", obj.fileName, obj.extensionName];
+                 [formData appendPartWithInputStream:obj.data name:obj.name fileName:fileName length:obj.length mimeType:obj.mimeType];
+             }
         }];
     } progress:^(NSProgress * _Nonnull uploadProgress) {
         if ([NSThread isMainThread]) {
@@ -289,146 +259,19 @@
     }];
 }
 
-/** HEAD */
-- (NSURLSessionDataTask *)HEAD:(NSString *)urlString
-                        params:(NSDictionary *)params
-                       success:(LZNetworkSuccessBlock)success
-                       failure:(LZNetworkFailureBlock)failure {
-    
-    return [[self httpSessionManager]
-            HEAD:urlString
-            parameters:params
-            success:^(NSURLSessionDataTask *task) {
-        if (success) {
-            success(task);
-        }
-    } failure:^(NSURLSessionDataTask *task, NSError *error) {
-        if (failure) {
-            failure(error);
-        }
-    }];
-}
-
-/** PATCH */
-- (NSURLSessionDataTask *)PATCH:(NSString *)urlString
-                         params:(NSDictionary *)params
-                        success:(LZNetworkSuccessBlock)success
-                        failure:(LZNetworkFailureBlock)failure {
-    
-    return [[self httpSessionManager]
-            PATCH:urlString
-            parameters:params
-            success:^(NSURLSessionDataTask *task, id responseObject) {
-        if (success) {
-            success(responseObject);
-        }
-    } failure:^(NSURLSessionDataTask *task, NSError *error) {
-        if (failure) {
-            failure(error);
-        }
-    }];
-}
-
-#pragma mark Private
-/** POST */
-- (NSURLSessionDataTask *)POST:(NSString *)urlString
-                        params:(NSDictionary *)params
-                       success:(LZNetworkSuccessBlock)success
-                       failure:(LZNetworkFailureBlock)failure {
-    
-    return [[self httpSessionManager]
-            POST:urlString
-            parameters:params
-            progress:^(NSProgress *uploadProgress) {}
-            success:^(NSURLSessionDataTask *task, id responseObject) {
-        if (success) {
-            success(responseObject);
-        }
-    } failure:^(NSURLSessionDataTask *task, NSError *error) {
-        if (failure) {
-            failure(error);
-        }
-    }];
-}
-
-/** DELETE */
-- (NSURLSessionDataTask *)DELETE:(NSString *)urlString
-                          params:(NSDictionary *)params
-                         success:(LZNetworkSuccessBlock)success
-                         failure:(LZNetworkFailureBlock)failure {
-    
-    return [[self httpSessionManager]
-            DELETE:urlString
-            parameters:params
-            success:^(NSURLSessionDataTask *task, id responseObject) {
-        if (success) {
-            success(responseObject);
-        }
-    } failure:^(NSURLSessionDataTask *task, NSError *error) {
-        if (failure) {
-            failure(error);
-        }
-    }];
-}
-
-/** PUT */
-- (NSURLSessionDataTask *)PUT:(NSString *)urlString
-                       params:(NSDictionary *)params
-                      success:(LZNetworkSuccessBlock)success
-                      failure:(LZNetworkFailureBlock)failure {
-    
-    return [[self httpSessionManager] PUT:urlString
-                               parameters:params
-                                  success:^(NSURLSessionDataTask *task, id responseObject) {
-        if (success) {
-            success(responseObject);
-        }
-    } failure:^(NSURLSessionDataTask *task, NSError *error) {
-        if (failure) {
-            failure(error);
-        }
-    }];
-}
-
-/** GET */
-- (NSURLSessionDataTask *)GET:(NSString *)urlString
-     params:(NSDictionary *)params
-    success:(LZNetworkSuccessBlock)success
-    failure:(LZNetworkFailureBlock)failure {
-    
-    return [[self httpSessionManager]
-            GET:urlString
-            parameters:params
-            progress:^(NSProgress *downloadProgress) {}
-            success:^(NSURLSessionDataTask *task, id responseObject) {
-        if (success) {
-            success(responseObject);
-        }
-    } failure:^(NSURLSessionDataTask *task, NSError *error) {
-        if (failure) {
-            failure(error);
-        }
-    }];
-}
-
-#pragma mark - -> AFURLSessionManager
-/** DataTask，有上传或下载进度 */
+// MARK: <AFURLSessionManager>
 - (NSURLSessionDataTask *)dataTaskRequest:(NSURLRequest *)request
                            uploadProgress:(LZNetworkProgressBlock)uploadProgressBlock
                          downloadProgress:(LZNetworkProgressBlock)downloadProgressBlock
                                   success:(LZNetworkSuccessBlock)success
                                   failure:(LZNetworkFailureBlock)failure {
 	
-    NSURLSessionDataTask *dataTask =
-    [[self urlSessionManager] dataTaskWithRequest:request uploadProgress:
-	 ^(NSProgress *uploadProgress) {
-		 
+    NSURLSessionDataTask *dataTask = [[self urlSessionManager] dataTaskWithRequest:request uploadProgress:^(NSProgress *uploadProgress) {
 		 if ([NSThread isMainThread]) {
 			 if (uploadProgressBlock) {
 				 uploadProgressBlock(uploadProgress);
 			 }
 		 } else {
-			 
 			 dispatch_async(dispatch_get_main_queue(), ^{
 				 if (uploadProgressBlock) {
 					 uploadProgressBlock(uploadProgress);
@@ -436,13 +279,11 @@
 			 });
 		 }
      } downloadProgress:^(NSProgress *downloadProgress) {
-		 
 		 if ([NSThread isMainThread]) {
 			 if (downloadProgressBlock) {
 				 downloadProgressBlock(downloadProgress);
 			 }
 		 } else {
-			 
 			 dispatch_async(dispatch_get_main_queue(), ^{
 				 if (downloadProgressBlock) {
 					 downloadProgressBlock(downloadProgress);
@@ -461,60 +302,38 @@
          }
      }];
     [dataTask resume];
-    
     return dataTask;
 }
 
-/** DataTask */
 - (NSURLSessionUploadTask *)uploadTaskRequest:(NSURLRequest *)request
                                    fromSource:(id)source
                                      progress:(LZNetworkProgressBlock)uploadProgress
                                       success:(LZNetworkSuccessBlock)success
                                       failure:(LZNetworkFailureBlock)failure {
-	
     if ([source isKindOfClass:[NSData class]])  {
-        return [self uploadTaskRequest:request
-                              fromData:source
-                              progress:uploadProgress
-                               success:success
-                               failure:failure];
+        return [self uploadTaskRequest:request fromData:source progress:uploadProgress success:success failure:failure];
     } else if ([source isKindOfClass:[NSURL class]]) {
-        return [self uploadTaskRequest:request
-                              fromFile:source
-                              progress:uploadProgress
-                               success:success
-                               failure:failure];
+        return [self uploadTaskRequest:request fromFile:source progress:uploadProgress success:success failure:failure];
     } else if ([source isKindOfClass:[NSString class]]) {
+        
         NSURL *fileUrl = [NSURL fileURLWithPath:source];
-        return [self uploadTaskRequest:request
-                              fromFile:fileUrl
-                              progress:uploadProgress
-                               success:success
-                               failure:failure];
+        return [self uploadTaskRequest:request fromFile:fileUrl progress:uploadProgress success:success failure:failure];
     } else {
-        return [self uploadTaskRequest:request
-                              progress:uploadProgress
-                               success:success
-                               failure:failure];
+        return [self uploadTaskRequest:request progress:uploadProgress success:success failure:failure];
     }
 }
 
-/** downloadTask */
 - (NSURLSessionDownloadTask *)downloadTaskRequest:(NSURLRequest *)request
                                          progress:(void (^)(NSProgress *))downloadProgressBlock
                                           success:(LZNetworkSuccessBlock)success
                                           failure:(LZNetworkFailureBlock)failure {
 	
-    NSURLSessionDownloadTask *downloadTask =
-    [[self urlSessionManager] downloadTaskWithRequest:request progress:
-	 ^(NSProgress * downloadProgress) {
-		 
+    NSURLSessionDownloadTask *downloadTask = [[self urlSessionManager] downloadTaskWithRequest:request progress:^(NSProgress * downloadProgress) {
 		 if ([NSThread isMainThread]) {
 			 if (downloadProgressBlock) {
 				 downloadProgressBlock(downloadProgress);
 			 }
 		 } else {
-			 
 			 dispatch_async(dispatch_get_main_queue(), ^{
 				 if (downloadProgressBlock) {
 					 downloadProgressBlock(downloadProgress);
@@ -533,10 +352,8 @@
 			 [fileM removeItemAtPath:fullPath error:NULL];
 		 }
          NSURL *fileURL = [NSURL fileURLWithPath:fullPath];
-         
          return fileURL;
      } completionHandler:^(NSURLResponse *response, NSURL *filePath, NSError *error) {
-		 
          LZNetworkingLog(@"<%@>文件保存到:%@", [response suggestedFilename], filePath);
          if (!error) {
 			 if (success) {
@@ -549,132 +366,20 @@
          }
 	 }];
 	[downloadTask resume];
-    
     return downloadTask;
 }
 
-#pragma mark Private
-/** UploadTask(NSURL) */
-- (NSURLSessionUploadTask *)uploadTaskRequest:(NSURLRequest *)request
-                                     fromFile:(NSURL *)fileUrl
-                                     progress:(LZNetworkProgressBlock)uploadProgressBlock
-                                      success:(LZNetworkSuccessBlock)success
-                                      failure:(LZNetworkFailureBlock)failure {
-	
-    NSURLSessionUploadTask *uploadTask =
-    [[self urlSessionManager] uploadTaskWithRequest:request fromFile:fileUrl progress:
-	 ^(NSProgress *uploadProgress) {
-		 
-		 if ([NSThread isMainThread]) {
-			 if (uploadProgressBlock) {
-				 uploadProgressBlock(uploadProgress);
-			 }
-		 } else {
-			 
-			 dispatch_async(dispatch_get_main_queue(), ^{
-				 if (uploadProgressBlock) {
-					 uploadProgressBlock(uploadProgress);
-				 }
-			 });
-		 }
-     } completionHandler:^(NSURLResponse *response, id responseObject, NSError *error) {
-		 
-         if (!error) {
-             if (success) success(responseObject);
-         } else {
-             if (failure) failure(error);
-         }
-     }];
-    [uploadTask resume];
-    
-    return uploadTask;
-}
-
-/** UploadTask(NSData)  */
-- (NSURLSessionUploadTask *)uploadTaskRequest:(NSURLRequest *)request
-                                     fromData:(NSData *)bodyData
-                                     progress:(void (^)(NSProgress *))uploadProgressBlock
-                                      success:(LZNetworkSuccessBlock)success
-                                      failure:(LZNetworkFailureBlock)failure {
-	
-    NSURLSessionUploadTask *uploadTask =
-    [[self urlSessionManager] uploadTaskWithRequest:request fromData:bodyData progress:
-	 ^(NSProgress *uploadProgress) {
-		 
-		 if ([NSThread isMainThread]) {
-			 if (uploadProgressBlock) {
-				 uploadProgressBlock(uploadProgress);
-			 }
-		 } else {
-			 
-			 dispatch_async(dispatch_get_main_queue(), ^{
-				 if (uploadProgressBlock) {
-					 uploadProgressBlock(uploadProgress);
-				 }
-			 });
-		 }
-     } completionHandler:^(NSURLResponse *response, id responseObject, NSError *error) {
-		 
-         if (!error) {
-             if (success) success(responseObject);
-         } else {
-             if (failure) failure(error);
-         }
-     }];
-    [uploadTask resume];
-    
-    return uploadTask;
-}
-
-/** UploadTask */
-- (NSURLSessionUploadTask *)uploadTaskRequest:(NSURLRequest *)request
-                                     progress:(LZNetworkProgressBlock)uploadProgressBlock
-                                      success:(LZNetworkSuccessBlock)success
-                                      failure:(LZNetworkFailureBlock)failure {
-	
-    NSURLSessionUploadTask *uploadTask =
-    [[self urlSessionManager] uploadTaskWithStreamedRequest:request progress:
-	 ^(NSProgress *uploadProgress) {
-		 
-		 if ([NSThread isMainThread]) {
-			 if (uploadProgressBlock) {
-				 uploadProgressBlock(uploadProgress);
-			 }
-		 } else {
-			 
-			 dispatch_async(dispatch_get_main_queue(), ^{
-				 if (uploadProgressBlock) {
-					 uploadProgressBlock(uploadProgress);
-				 }
-			 });
-		 }
-     } completionHandler:^(NSURLResponse *response, id responseObject, NSError *error) {
-		 
-		 if (!error) {
-			 if (success) success(responseObject);
-		 } else {
-			 if (failure) failure(error);
-		 }
-     }];
-    [uploadTask resume];
-    
-    return uploadTask;
-}
-
-#pragma mark - -> AFNetworkingReachabilityManager
-/** 开启网络状态监听 */
-- (void)networkStatusStartMonitoring:(void (^)(NetworkStatus))finishHandler {
-	
+// MARK: - AFNetworkingReachabilityManager -
+- (void)networkStatusStartMonitoring:(void (^)(NetworkStatus))changeHandler {
     /**
      AFNetworkReachabilityStatusUnknown          = -1,  // 未知
      AFNetworkReachabilityStatusNotReachable     = 0,   // 无连接
      AFNetworkReachabilityStatusReachableViaWWAN = 1,   // 3G 花钱
      AFNetworkReachabilityStatusReachableViaWiFi = 2,   // 局域网络,不花钱
      */
-    
     AFNetworkReachabilityManager *networkMgr = [AFNetworkReachabilityManager sharedManager];
     [networkMgr setReachabilityStatusChangeBlock:^(AFNetworkReachabilityStatus status) {
-		
+        
         NSString *network = nil;
         switch (status) {
             case AFNetworkReachabilityStatusUnknown:
@@ -690,30 +395,23 @@
                 network = @"WIFI";
                 break;
         }
-        
-         LZNetworkingLog(@"当前网络类型:%@", network);
-         if (finishHandler) finishHandler((NSInteger)status);
-     }];
-    
+        LZNetworkingLog(@"当前网络类型:%@", network);
+        if (changeHandler) changeHandler((NSInteger)status);
+    }];
     [networkMgr startMonitoring];
 }
 
-/** 关闭网络状态监听 */
 - (void)networkStatusStopMonitoring {
     [[AFNetworkReachabilityManager sharedManager] stopMonitoring];;
 }
 
-/** 当前网络状态 */
 - (NetworkStatus)networkStatus {
 	
     AFNetworkReachabilityStatus status = [AFNetworkReachabilityManager sharedManager].networkReachabilityStatus;
-    
     return (NetworkStatus)status;
 }
 
-/** 开启网络可达性监听 */
-- (void)networkReachabilityStartMonitoring:(void (^)(BOOL))finishHandler {
-	
+- (void)networkReachabilityStartMonitoring:(void (^)(BOOL))changeHandler {
     [self networkStatusStartMonitoring:^(NetworkStatus status) {
         BOOL isReachable = YES;
         switch (status) {
@@ -726,60 +424,44 @@
                 isReachable = NO;
                 break;
         }
-        
-		if (finishHandler) {
-			finishHandler(isReachable);
+		if (changeHandler) {
+			changeHandler(isReachable);
 		}
     }];
 }
 
-/** 关闭网络可达性监听 */
 - (void)networkReachabilityStopMonitoring {
     [self networkStatusStopMonitoring];
 }
 
-/** 当前网络是否可用 */
 - (BOOL)networkReachability {
 	
     BOOL reachability = [AFNetworkReachabilityManager sharedManager].reachable;
-    
     return reachability;
 }
 
-#pragma mark - Other
-/** 暂停所有请求任务 */
+// MARK: - Other -
 - (void)pauseAllRequestTask {
 	
     NSMutableArray *tasksArrM = [NSMutableArray array];
     [tasksArrM addObjectsFromArray:self.httpSessionManager.tasks];
     [tasksArrM addObjectsFromArray:self.urlSessionManager.tasks];
-    
-    [tasksArrM enumerateObjectsUsingBlock:
-	 ^(NSURLSessionTask *dataTask, NSUInteger idx, BOOL * _Nonnull stop) {
-         [dataTask suspend];
-     }];
+    [tasksArrM enumerateObjectsUsingBlock:^(NSURLSessionTask *dataTask, NSUInteger idx, BOOL * _Nonnull stop) {
+        [dataTask suspend];
+    }];
 }
 
-/**
- @author Lilei
- 
- @brief 恢复所有请求任务
- */
 - (void)resumeAllRequestTask {
 	
     NSMutableArray *tasksArrM = [NSMutableArray array];
     [tasksArrM addObjectsFromArray:self.httpSessionManager.tasks];
     [tasksArrM addObjectsFromArray:self.urlSessionManager.tasks];
-    
-    [tasksArrM enumerateObjectsUsingBlock:
-	 ^(NSURLSessionTask *dataTask, NSUInteger idx, BOOL * _Nonnull stop) {
+    [tasksArrM enumerateObjectsUsingBlock:^(NSURLSessionTask *dataTask, NSUInteger idx, BOOL * _Nonnull stop) {
          [dataTask resume];
-     }];
+    }];
 }
 
-/** 设置网络请求拦截类 */
 - (void)setURLProtocol:(Class)customUrlProtocol {
-	
     if ([customUrlProtocol isKindOfClass:[NSURLProtocol class]]) {
         
     }
@@ -941,6 +623,295 @@
     }
     CFRelease(items);
     return YES;
+}
+
+// MARK: - Deprecated -
+- (NSURLSessionDataTask *)requestWithHttpMethod:(HttpMethodType)httpMethod
+                                            url:(NSString *)urlString
+                                         params:(NSDictionary *)params
+                                        success:(LZNetworkSuccessBlock)success
+                                        failure:(LZNetworkFailureBlock)failure {
+    return [self requestMethod:httpMethod
+                     urlString:urlString
+                    parameters:params
+                       headers:self.customRequestHeader
+                       success:success
+                       failure:failure];
+}
+
+- (NSURLSessionDataTask *)POST:(NSString *)urlString
+                        params:(NSDictionary *)params
+                          data:(NSArray *)dataArrI
+                          name:(NSString *)name
+                      fileName:(NSString *)fileName
+                      mimeType:(NSString *)mimeType
+                      progress:(LZNetworkProgressBlock)progress
+                       success:(LZNetworkSuccessBlock)success
+                       failure:(LZNetworkFailureBlock)failure {
+    
+    NSMutableArray *dataArrM = [NSMutableArray arrayWithCapacity:dataArrI.count];
+    [dataArrI enumerateObjectsUsingBlock:^(id  _Nonnull data, NSUInteger idx, BOOL * _Nonnull stop) {
+        
+        LZMultipartDataModel *dataModel = [[LZMultipartDataModel alloc] init];
+        dataModel.name = name;
+        dataModel.fileName = fileName;
+        dataModel.extensionName = nil;
+        dataModel.mimeType = mimeType;
+        dataModel.data = data;
+        [dataArrM addObject:dataModel];
+    }];
+    return [self POST:urlString parameters:params headers:self.customRequestHeader multipartForms:dataArrM progress:progress success:success failure:failure];
+}
+
+- (NSURLSessionDataTask *)POSTMultipartFormData:(NSString *)urlString
+                                         params:(NSDictionary *)params
+                                           data:(NSArray *)dataArrI
+                                           name:(NSString *)name
+                                       mimeType:(NSString *)mimeType
+                                       progress:(LZNetworkProgressBlock)progress
+                                        success:(LZNetworkSuccessBlock)success
+                                        failure:(LZNetworkFailureBlock)failure {
+    
+    NSMutableArray *dataArrM = [NSMutableArray arrayWithCapacity:dataArrI.count];
+    [dataArrI enumerateObjectsUsingBlock:^(id  _Nonnull data, NSUInteger idx, BOOL * _Nonnull stop) {
+        
+        LZMultipartDataModel *dataModel = [[LZMultipartDataModel alloc] init];
+        dataModel.name = name;
+        dataModel.extensionName = nil;
+        dataModel.mimeType = mimeType;
+        dataModel.data = data;
+        [dataArrM addObject:dataModel];
+        if ([data isKindOfClass:[NSURL class]]) {
+            
+            NSString *fileName = [(NSURL *)data lastPathComponent];
+            dataModel.fileName = fileName;
+        } else if ([data isKindOfClass:[NSString class]]) {
+            
+            NSURL *fileURL = [NSURL fileURLWithPath:data];
+            NSString *fileName = [fileURL lastPathComponent];
+            dataModel.fileName = fileName;
+        } else if ([data isKindOfClass:[NSData class]]) {
+            if (nil == self->_dateFmt) {
+                
+                self->_dateFmt = [[NSDateFormatter alloc] init];
+                self->_dateFmt.dateFormat = @"yyyy-MM-ddHH:mm:ss:SSS";
+            }
+            NSString *fileName = [self->_dateFmt stringFromDate:[NSDate date]];
+            dataModel.fileName = fileName;
+            dataModel.extensionName = @"png";
+        }
+    }];
+    return [self POST:urlString parameters:params headers:self.customRequestHeader multipartForms:dataArrM progress:progress success:success failure:failure];
+}
+
+- (NSURLSessionDataTask *)HEAD:(NSString *)urlString
+                        params:(NSDictionary *)params
+                       success:(LZNetworkSuccessBlock)success
+                       failure:(LZNetworkFailureBlock)failure {
+    return [self requestMethod:LZHTTPRequestHEAD urlString:urlString parameters:params headers:self.customRequestHeader success:success failure:failure];
+}
+
+- (NSURLSessionDataTask *)PATCH:(NSString *)urlString
+                         params:(NSDictionary *)params
+                        success:(LZNetworkSuccessBlock)success
+                        failure:(LZNetworkFailureBlock)failure {
+    return [self requestMethod:LZHTTPRequestPATCH urlString:urlString parameters:params headers:self.customRequestHeader success:success failure:failure];
+}
+
+// MARK: - Private
+- (NSURLSessionDataTask *)POST:(NSString *)urlString
+                        params:(nullable NSDictionary *)params
+                       headers:(nullable NSDictionary *)headers
+                       success:(LZNetworkSuccessBlock)success
+                       failure:(LZNetworkFailureBlock)failure {
+    return [[self httpSessionManager] POST:urlString parameters:params headers:headers progress:^(NSProgress *uploadProgress) {
+    } success:^(NSURLSessionDataTask *task, id responseObject) {
+        if (success) {
+            success(responseObject);
+        }
+    } failure:^(NSURLSessionDataTask *task, NSError *error) {
+        if (failure) {
+            failure(error);
+        }
+    }];
+}
+
+- (NSURLSessionDataTask *)DELETE:(NSString *)urlString
+                          params:(nullable NSDictionary *)params
+                         headers:(nullable NSDictionary *)headers
+                         success:(LZNetworkSuccessBlock)success
+                         failure:(LZNetworkFailureBlock)failure {
+    return [[self httpSessionManager] DELETE:urlString parameters:params headers:headers success:^(NSURLSessionDataTask *task, id responseObject) {
+        if (success) {
+            success(responseObject);
+        }
+    } failure:^(NSURLSessionDataTask *task, NSError *error) {
+        if (failure) {
+            failure(error);
+        }
+    }];
+}
+
+- (NSURLSessionDataTask *)PUT:(NSString *)urlString
+                       params:(nullable NSDictionary *)params
+                      headers:(nullable NSDictionary *)headers
+                      success:(LZNetworkSuccessBlock)success
+                      failure:(LZNetworkFailureBlock)failure {
+    return [[self httpSessionManager] PUT:urlString parameters:params headers:headers success:^(NSURLSessionDataTask *task, id responseObject) {
+        if (success) {
+            success(responseObject);
+        }
+    } failure:^(NSURLSessionDataTask *task, NSError *error) {
+        if (failure) {
+            failure(error);
+        }
+    }];
+}
+
+- (NSURLSessionDataTask *)GET:(NSString *)urlString
+                       params:(nullable NSDictionary *)params
+                      headers:(nullable NSDictionary *)headers
+                      success:(LZNetworkSuccessBlock)success
+                      failure:(LZNetworkFailureBlock)failure {
+    return [[self httpSessionManager] GET:urlString parameters:params headers:headers progress:^(NSProgress * _Nonnull downloadProgress) {
+    } success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        if (success) {
+            success(responseObject);
+        }
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        if (failure) {
+            failure(error);
+        }
+    }];
+}
+
+- (NSURLSessionDataTask *)HEAD:(NSString *)urlString
+                        params:(nullable NSDictionary *)params
+                       headers:(nullable NSDictionary *)headers
+                       success:(LZNetworkSuccessBlock)success
+                       failure:(LZNetworkFailureBlock)failure {
+    return [[self httpSessionManager] HEAD:urlString parameters:params headers:headers success:^(NSURLSessionDataTask * _Nonnull task) {
+        if (success) {
+            success(task);
+        }
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        if (failure) {
+            failure(error);
+        }
+    }];
+}
+
+- (NSURLSessionDataTask *)PATCH:(NSString *)urlString
+                         params:(nullable NSDictionary *)params
+                        headers:(nullable NSDictionary *)headers
+                        success:(LZNetworkSuccessBlock)success
+                        failure:(LZNetworkFailureBlock)failure {
+    return [[self httpSessionManager] PATCH:urlString parameters:params headers:headers success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        if (success) {
+            success(responseObject);
+        }
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        if (failure) {
+            failure(error);
+        }
+    }];
+}
+
+- (NSURLSessionUploadTask *)uploadTaskRequest:(NSURLRequest *)request
+                                     fromFile:(NSURL *)fileUrl
+                                     progress:(LZNetworkProgressBlock)uploadProgressBlock
+                                      success:(LZNetworkSuccessBlock)success
+                                      failure:(LZNetworkFailureBlock)failure {
+    
+    NSURLSessionUploadTask *uploadTask = [[self urlSessionManager] uploadTaskWithRequest:request fromFile:fileUrl progress:^(NSProgress *uploadProgress) {
+         if ([NSThread isMainThread]) {
+             if (uploadProgressBlock) {
+                 uploadProgressBlock(uploadProgress);
+             }
+         } else {
+             dispatch_async(dispatch_get_main_queue(), ^{
+                 if (uploadProgressBlock) {
+                     uploadProgressBlock(uploadProgress);
+                 }
+             });
+         }
+     } completionHandler:^(NSURLResponse *response, id responseObject, NSError *error) {
+         if (!error) {
+             if (success) success(responseObject);
+         } else {
+             if (failure) failure(error);
+         }
+     }];
+    [uploadTask resume];
+    return uploadTask;
+}
+
+- (NSURLSessionUploadTask *)uploadTaskRequest:(NSURLRequest *)request
+                                     fromData:(NSData *)bodyData
+                                     progress:(void (^)(NSProgress *))uploadProgressBlock
+                                      success:(LZNetworkSuccessBlock)success
+                                      failure:(LZNetworkFailureBlock)failure {
+    
+    NSURLSessionUploadTask *uploadTask = [[self urlSessionManager] uploadTaskWithRequest:request fromData:bodyData progress:^(NSProgress *uploadProgress) {
+         if ([NSThread isMainThread]) {
+             if (uploadProgressBlock) {
+                 uploadProgressBlock(uploadProgress);
+             }
+         } else {
+             dispatch_async(dispatch_get_main_queue(), ^{
+                 if (uploadProgressBlock) {
+                     uploadProgressBlock(uploadProgress);
+                 }
+             });
+         }
+     } completionHandler:^(NSURLResponse *response, id responseObject, NSError *error) {
+         if (!error) {
+             if (success) success(responseObject);
+         } else {
+             if (failure) failure(error);
+         }
+     }];
+    [uploadTask resume];
+    return uploadTask;
+}
+
+- (NSURLSessionUploadTask *)uploadTaskRequest:(NSURLRequest *)request
+                                     progress:(LZNetworkProgressBlock)uploadProgressBlock
+                                      success:(LZNetworkSuccessBlock)success
+                                      failure:(LZNetworkFailureBlock)failure {
+    
+    NSURLSessionUploadTask *uploadTask = [[self urlSessionManager] uploadTaskWithStreamedRequest:request progress:^(NSProgress *uploadProgress) {
+         if ([NSThread isMainThread]) {
+             if (uploadProgressBlock) {
+                 uploadProgressBlock(uploadProgress);
+             }
+         } else {
+             dispatch_async(dispatch_get_main_queue(), ^{
+                 if (uploadProgressBlock) {
+                     uploadProgressBlock(uploadProgress);
+                 }
+             });
+         }
+     } completionHandler:^(NSURLResponse *response, id responseObject, NSError *error) {
+         if (!error) {
+             if (success) success(responseObject);
+         } else {
+             if (failure) failure(error);
+         }
+     }];
+    [uploadTask resume];
+    return uploadTask;
+}
+
+@end
+
+@implementation LZMultipartDataModel
+
+- (instancetype)init {
+    if (self = [super init]) {
+        self.extensionName = @"png";
+    }
+    return self;
 }
 
 @end

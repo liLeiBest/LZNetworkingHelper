@@ -26,7 +26,7 @@
   "public_header_files": "LZNetworkingHelper/Classes/*.h",
   "dependencies": {
     "AFNetworking": [
-      "3.2.1"
+
     ]
   },
   "prefix_header_contents": "#if DEBUG\n#define LZNetworkingLog(fmt, ...) NSLog((@\"%s [Line %d] \" fmt), __PRETTY_FUNCTION__, __LINE__, ##__VA_ARGS__);\n#else\n#define LZNetworkingLog(fmt, ...)\n#endif"

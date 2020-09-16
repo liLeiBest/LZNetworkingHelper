@@ -17,7 +17,7 @@ Pod::Spec.new do |s|
 	
 	s.source_files			= 'LZNetworkingHelper/Classes/*.{h,m}'
 	s.public_header_files	= 'LZNetworkingHelper/Classes/*.h'
-	s.dependency 'AFNetworking','3.2.1'
+	s.dependency 'AFNetworking'
 	
 	pch_AF = <<-EOS
 	#if DEBUG
