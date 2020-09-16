@@ -3,13 +3,13 @@
   "version": "2.0.0",
   "summary": "LZNetworkingHelper.",
   "description": "网络请求",
-  "homepage": "https://github.com/lilei_hapy@163.com/LZNetworkingHelper",
+  "homepage": "https://github.com/liLeiBest",
   "license": {
     "type": "MIT",
     "file": "LICENSE"
   },
   "authors": {
-    "lilei_hapy@163.com": "lilei_hapy@163.com"
+    "lilei": "lilei_hapy@163.com"
   },
   "source": {
     "git": "https://github.com/liLeiBest/LZNetworkingHelper.git",

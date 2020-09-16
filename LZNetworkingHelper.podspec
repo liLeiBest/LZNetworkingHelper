@@ -7,9 +7,9 @@ Pod::Spec.new do |s|
 	网络请求
 	DESC
 	
-	s.homepage         = 'https://github.com/lilei_hapy@163.com/LZNetworkingHelper'
+	s.homepage         = 'https://github.com/liLeiBest'
 	s.license          = { :type => 'MIT', :file => 'LICENSE' }
-	s.author           = { 'lilei_hapy@163.com' => 'lilei_hapy@163.com' }
+	s.author           = { 'lilei' => 'lilei_hapy@163.com' }
 	s.source           = { :git => 'https://github.com/liLeiBest/LZNetworkingHelper.git', :tag => s.version.to_s }
 	
 	s.frameworks            = 'Foundation', 'UIKit'
