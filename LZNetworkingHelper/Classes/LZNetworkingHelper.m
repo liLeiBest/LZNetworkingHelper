@@ -467,164 +467,6 @@
     }
 }
 
-#pragma mark - -> Private
-/**
- 配置请求的安全策略
- */
-- (void)configSecurityPolicy {
-	
-    if (self.cerFilePath && self.cerFilePath.length) {
-        
-        LZNetworkingLog(@"certificate path:%@", self.cerFilePath);
-        NSData *caCert = [NSData dataWithContentsOfFile:self.cerFilePath];
-        NSAssert(caCert != nil, @"certificate is not exist.");
-        NSSet *certSet = [NSSet setWithObject:caCert];
-        AFSecurityPolicy *securityPolicy =
-        [AFSecurityPolicy policyWithPinningMode:AFSSLPinningModeCertificate
-                         withPinnedCertificates:certSet];
-        securityPolicy.allowInvalidCertificates = YES;
-        securityPolicy.validatesDomainName = YES;
-        
-        self.httpSessionManager.securityPolicy = securityPolicy;
-        self.urlSessionManager.securityPolicy = securityPolicy;
-        
-        [self sessionDidReceiveAuthenticationChallengeBlock:self.httpSessionManager];
-        [self sessionDidReceiveAuthenticationChallengeBlock:self.urlSessionManager];
-    }
-}
-
-/**
- 会话身份验证设置
- 
- @param sessionManager AFURLSessionManager
- */
-- (void)sessionDidReceiveAuthenticationChallengeBlock:(AFURLSessionManager *)sessionManager {
-    
-    typedef NSURLSessionAuthChallengeDisposition (^AFURLSessionDidReceiveAuthenticationChallengeBlock)(NSURLSession *session, NSURLAuthenticationChallenge *challenge, NSURLCredential * __autoreleasing *credential);
-    __weak typeof(self) weakSelf = self;
-    AFURLSessionDidReceiveAuthenticationChallengeBlock block = ^NSURLSessionAuthChallengeDisposition(NSURLSession * _Nonnull session, NSURLAuthenticationChallenge * _Nonnull challenge, NSURLCredential *__autoreleasing  _Nullable * _Nullable _credential) {
-        
-        typeof(weakSelf) strongSelf = weakSelf;
-        static dispatch_once_t onceToken;
-        dispatch_once(&onceToken, ^{
-            
-            // 获取服务器的 trust object
-            SecTrustRef serverTrust = [[challenge protectionSpace] serverTrust];
-            
-            // 导入自签名证书
-            NSData* caCert = [NSData dataWithContentsOfFile:strongSelf.cerFilePath];
-            NSAssert(caCert != nil, @"certificate is not exist.");
-            // NSSet *certSet = [NSSet setWithObject:caCert];
-            // strongSelf.httpSessionManager.securityPolicy.pinnedCertificates = certSet;
-            SecCertificateRef caRef = SecCertificateCreateWithData(NULL, (__bridge CFDataRef)caCert);
-            NSCAssert(caRef != nil, @"caRef is nil");
-            NSArray *caArray = @[(__bridge_transfer id)(caRef)];
-            NSCAssert(caArray != nil, @"caArray is nil");
-            
-            // 设置锚点证书
-            OSStatus status = SecTrustSetAnchorCertificates(serverTrust, (__bridge CFArrayRef)caArray);
-            SecTrustSetAnchorCertificatesOnly(serverTrust,NO);
-            NSCAssert(errSecSuccess == status, @"SecTrustSetAnchorCertificates failed");
-            if (errSecSuccess == status) {
-                LZNetworkingLog(@"SecTrustSetAnchorCertificates success");
-            }
-        });
-        
-        // 选择质询认证的处理方式
-        NSURLSessionAuthChallengeDisposition disposition = NSURLSessionAuthChallengePerformDefaultHandling;
-        __autoreleasing NSURLCredential *credential = nil;
-        
-        // NSURLAuthenticationMethodServerTrust 质询认证方式
-        if ([challenge.protectionSpace.authenticationMethod isEqualToString:NSURLAuthenticationMethodServerTrust]) {
-            
-            // 基于客户端的安全策略来决定是否信任该服务器，不信任则不响应质询
-            if ([strongSelf.httpSessionManager.securityPolicy evaluateServerTrust:challenge.protectionSpace.serverTrust
-                                                                        forDomain:challenge.protectionSpace.host]) {
-                
-                // 创建质询证书
-                credential = [NSURLCredential credentialForTrust:challenge.protectionSpace.serverTrust];
-                // 确认质询方式
-                if (credential) {
-                    disposition = NSURLSessionAuthChallengeUseCredential;
-                } else {
-                    disposition = NSURLSessionAuthChallengePerformDefaultHandling;
-                }
-            } else {
-                // 取消质询
-                disposition = NSURLSessionAuthChallengeCancelAuthenticationChallenge;
-            }
-        } else {
-            
-            if (!self.p12FilePath || !self.p12FilePath.length) return disposition;
-            LZNetworkingLog(@"p12 path:%@", self.p12FilePath);
-            NSFileManager *fileManager =[NSFileManager defaultManager];
-            if(![fileManager fileExistsAtPath:self.p12FilePath]) {
-                LZNetworkingLog(@"p12 is not exist.");
-                return disposition;
-            }
-            
-            SecIdentityRef identity = NULL;
-            SecTrustRef trust = NULL;
-            NSData *PKCS12Data = [NSData dataWithContentsOfFile:strongSelf.p12FilePath];
-            if ([strongSelf extractIdentity:&identity andTrust:&trust fromPKCS12Data:PKCS12Data]) {
-                
-                SecCertificateRef certificate = NULL;
-                SecIdentityCopyCertificate(identity, &certificate);
-                const void *certs[] = {certificate};
-                CFArrayRef certArray =CFArrayCreate(kCFAllocatorDefault, certs, 1, NULL);
-                credential = [NSURLCredential credentialWithIdentity:identity certificates:(__bridge NSArray*)certArray persistence:NSURLCredentialPersistencePermanent];
-                CFRelease(certArray);
-                if (credential) {
-                    disposition = NSURLSessionAuthChallengeUseCredential;
-                } else {
-                    disposition = NSURLSessionAuthChallengePerformDefaultHandling;
-                }
-            }
-        }
-        return disposition;
-    };
-    
-    [sessionManager setSessionDidReceiveAuthenticationChallengeBlock:block];
-}
-
-/**
- 从 P12 文件中提取身份
-
- @param outIdentity SecIdentityRef
- @param outTrust SecTrustRef
- @param inPKCS12Data NSData
- @return BOOL
- */
-- (BOOL)extractIdentity:(SecIdentityRef *)outIdentity
-               andTrust:(SecTrustRef *)outTrust
-         fromPKCS12Data:(NSData *)inPKCS12Data {
-    
-    OSStatus securityError = errSecSuccess;
-    NSDictionary *optionsDictionary =
-    [NSDictionary dictionaryWithObject:self.p12Password
-                                forKey:(__bridge id)kSecImportExportPassphrase];
-    
-    CFArrayRef items = CFArrayCreate(NULL, 0, 0, NULL);
-    securityError =
-    SecPKCS12Import((__bridge CFDataRef)inPKCS12Data, (__bridge CFDictionaryRef)optionsDictionary, &items);
-    
-    if(securityError == 0) {
-        
-        CFDictionaryRef myIdentityAndTrust =CFArrayGetValueAtIndex(items,0);
-        const void*tempIdentity =NULL;
-        tempIdentity= CFDictionaryGetValue (myIdentityAndTrust,kSecImportItemIdentity);
-        *outIdentity = (SecIdentityRef)tempIdentity;
-        const void*tempTrust =NULL;
-        tempTrust = CFDictionaryGetValue(myIdentityAndTrust,kSecImportItemTrust);
-        *outTrust = (SecTrustRef)tempTrust;
-    } else {
-        LZNetworkingLog(@"Failedwith error code %d",(int)securityError);
-        return NO;
-    }
-    CFRelease(items);
-    return YES;
-}
-
 // MARK: - Deprecated -
 - (NSURLSessionDataTask *)requestWithHttpMethod:(HttpMethodType)httpMethod
                                             url:(NSString *)urlString
@@ -700,6 +542,7 @@
             dataModel.fileName = fileName;
             dataModel.extensionName = @"png";
         }
+        [dataArrM addObject:dataModel];
     }];
     return [self POST:urlString parameters:params headers:self.customRequestHeader multipartForms:dataArrM progress:progress success:success failure:failure];
 }
@@ -719,6 +562,133 @@
 }
 
 // MARK: - Private
+- (void)configSecurityPolicy {
+    if (self.cerFilePath && self.cerFilePath.length) {
+        LZNetworkingLog(@"certificate path:%@", self.cerFilePath);
+        NSData *caCert = [NSData dataWithContentsOfFile:self.cerFilePath];
+        NSAssert(caCert != nil, @"certificate is not exist.");
+        NSSet *certSet = [NSSet setWithObject:caCert];
+        AFSecurityPolicy *securityPolicy =
+        [AFSecurityPolicy policyWithPinningMode:AFSSLPinningModeCertificate
+                         withPinnedCertificates:certSet];
+        securityPolicy.allowInvalidCertificates = YES;
+        securityPolicy.validatesDomainName = YES;
+        
+        self.httpSessionManager.securityPolicy = securityPolicy;
+        self.urlSessionManager.securityPolicy = securityPolicy;
+        
+        [self sessionDidReceiveAuthenticationChallengeBlock:self.httpSessionManager];
+        [self sessionDidReceiveAuthenticationChallengeBlock:self.urlSessionManager];
+    }
+}
+
+- (void)sessionDidReceiveAuthenticationChallengeBlock:(AFURLSessionManager *)sessionManager {
+    
+    typedef NSURLSessionAuthChallengeDisposition (^AFURLSessionDidReceiveAuthenticationChallengeBlock)(NSURLSession *session, NSURLAuthenticationChallenge *challenge, NSURLCredential * __autoreleasing *credential);
+    __weak typeof(self) weakSelf = self;
+    AFURLSessionDidReceiveAuthenticationChallengeBlock block = ^NSURLSessionAuthChallengeDisposition(NSURLSession * _Nonnull session, NSURLAuthenticationChallenge * _Nonnull challenge, NSURLCredential *__autoreleasing  _Nullable * _Nullable _credential) {
+        typeof(weakSelf) strongSelf = weakSelf;
+        static dispatch_once_t onceToken;
+        dispatch_once(&onceToken, ^{
+            // 获取服务器的 trust object
+            SecTrustRef serverTrust = [[challenge protectionSpace] serverTrust];
+            // 导入自签名证书
+            NSData* caCert = [NSData dataWithContentsOfFile:strongSelf.cerFilePath];
+            NSAssert(caCert != nil, @"certificate is not exist.");
+            // NSSet *certSet = [NSSet setWithObject:caCert];
+            // strongSelf.httpSessionManager.securityPolicy.pinnedCertificates = certSet;
+            SecCertificateRef caRef = SecCertificateCreateWithData(NULL, (__bridge CFDataRef)caCert);
+            NSCAssert(caRef != nil, @"caRef is nil");
+            NSArray *caArray = @[(__bridge_transfer id)(caRef)];
+            NSCAssert(caArray != nil, @"caArray is nil");
+            // 设置锚点证书
+            OSStatus status = SecTrustSetAnchorCertificates(serverTrust, (__bridge CFArrayRef)caArray);
+            SecTrustSetAnchorCertificatesOnly(serverTrust,NO);
+            NSCAssert(errSecSuccess == status, @"SecTrustSetAnchorCertificates failed");
+            if (errSecSuccess == status) {
+                LZNetworkingLog(@"SecTrustSetAnchorCertificates success");
+            }
+        });
+        // 选择质询认证的处理方式
+        NSURLSessionAuthChallengeDisposition disposition = NSURLSessionAuthChallengePerformDefaultHandling;
+        __autoreleasing NSURLCredential *credential = nil;
+        // NSURLAuthenticationMethodServerTrust 质询认证方式
+        if ([challenge.protectionSpace.authenticationMethod isEqualToString:NSURLAuthenticationMethodServerTrust]) {
+            // 基于客户端的安全策略来决定是否信任该服务器，不信任则不响应质询
+            if ([strongSelf.httpSessionManager.securityPolicy evaluateServerTrust:challenge.protectionSpace.serverTrust forDomain:challenge.protectionSpace.host]) {
+                // 创建质询证书
+                credential = [NSURLCredential credentialForTrust:challenge.protectionSpace.serverTrust];
+                // 确认质询方式
+                if (credential) {
+                    disposition = NSURLSessionAuthChallengeUseCredential;
+                } else {
+                    disposition = NSURLSessionAuthChallengePerformDefaultHandling;
+                }
+            } else {
+                // 取消质询
+                disposition = NSURLSessionAuthChallengeCancelAuthenticationChallenge;
+            }
+        } else {
+            if (!self.p12FilePath || !self.p12FilePath.length) return disposition;
+            LZNetworkingLog(@"p12 path:%@", self.p12FilePath);
+            NSFileManager *fileManager =[NSFileManager defaultManager];
+            if(![fileManager fileExistsAtPath:self.p12FilePath]) {
+                LZNetworkingLog(@"p12 is not exist.");
+                return disposition;
+            }
+            SecIdentityRef identity = NULL;
+            SecTrustRef trust = NULL;
+            NSData *PKCS12Data = [NSData dataWithContentsOfFile:strongSelf.p12FilePath];
+            if ([strongSelf extractIdentity:&identity andTrust:&trust fromPKCS12Data:PKCS12Data]) {
+                
+                SecCertificateRef certificate = NULL;
+                SecIdentityCopyCertificate(identity, &certificate);
+                const void *certs[] = {certificate};
+                CFArrayRef certArray =CFArrayCreate(kCFAllocatorDefault, certs, 1, NULL);
+                credential = [NSURLCredential credentialWithIdentity:identity certificates:(__bridge NSArray*)certArray persistence:NSURLCredentialPersistencePermanent];
+                CFRelease(certArray);
+                if (credential) {
+                    disposition = NSURLSessionAuthChallengeUseCredential;
+                } else {
+                    disposition = NSURLSessionAuthChallengePerformDefaultHandling;
+                }
+            }
+        }
+        return disposition;
+    };
+    [sessionManager setSessionDidReceiveAuthenticationChallengeBlock:block];
+}
+
+- (BOOL)extractIdentity:(SecIdentityRef *)outIdentity
+               andTrust:(SecTrustRef *)outTrust
+         fromPKCS12Data:(NSData *)inPKCS12Data {
+    
+    OSStatus securityError = errSecSuccess;
+    NSDictionary *optionsDictionary =
+    [NSDictionary dictionaryWithObject:self.p12Password
+                                forKey:(__bridge id)kSecImportExportPassphrase];
+    
+    CFArrayRef items = CFArrayCreate(NULL, 0, 0, NULL);
+    securityError =
+    SecPKCS12Import((__bridge CFDataRef)inPKCS12Data, (__bridge CFDictionaryRef)optionsDictionary, &items);
+    
+    if(securityError == 0) {
+        
+        CFDictionaryRef myIdentityAndTrust =CFArrayGetValueAtIndex(items,0);
+        const void*tempIdentity =NULL;
+        tempIdentity= CFDictionaryGetValue (myIdentityAndTrust,kSecImportItemIdentity);
+        *outIdentity = (SecIdentityRef)tempIdentity;
+        const void*tempTrust =NULL;
+        tempTrust = CFDictionaryGetValue(myIdentityAndTrust,kSecImportItemTrust);
+        *outTrust = (SecTrustRef)tempTrust;
+    } else {
+        LZNetworkingLog(@"Failedwith error code %d",(int)securityError);
+        return NO;
+    }
+    CFRelease(items);
+    return YES;
+}
+
 - (NSURLSessionDataTask *)POST:(NSString *)urlString
                         params:(nullable NSDictionary *)params
                        headers:(nullable NSDictionary *)headers
