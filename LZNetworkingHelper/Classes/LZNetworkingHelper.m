@@ -208,7 +208,7 @@
                 } else {
                     fileName = [fileURL lastPathComponent];
                 }
-                [formData appendPartWithFileURL:obj.data name:obj.name fileName:fileName mimeType:obj.mimeType error:NULL];
+                [formData appendPartWithFileURL:fileURL name:obj.name fileName:fileName mimeType:obj.mimeType error:NULL];
             } else if ([obj.data isKindOfClass:[NSData class]]) {
                 if (nil == obj.mimeType) {
                     [formData appendPartWithFormData:obj.data name:obj.name];
