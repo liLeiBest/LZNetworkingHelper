@@ -155,6 +155,10 @@ typedef void (^LZURLSessionTaskDidCompleteBlock)(NSURLSession *session, NSURLSes
 /// 恢复所有请求任务
 - (void)resumeAllRequestTask;
 
+/// 是否是代理的状态
+/// @param urlString 请求地址
+- (BOOL)isProxyStatus:(NSString *)urlString;
+
 /// 设置网络请求拦截类
 /// @param customUrlProtocol NSURLProtocol 子类
 - (void)setURLProtocol:(Class)customUrlProtocol;

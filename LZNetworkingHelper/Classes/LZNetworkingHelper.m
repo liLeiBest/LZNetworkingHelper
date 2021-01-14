@@ -8,6 +8,7 @@
 
 #import "LZNetworkingHelper.h"
 #import "AFNetworking.h"
+#import <CFNetwork/CFProxySupport.h>
 
 @interface LZNetworkingHelper()
 
@@ -459,6 +460,25 @@
     [tasksArrM enumerateObjectsUsingBlock:^(NSURLSessionTask *dataTask, NSUInteger idx, BOOL * _Nonnull stop) {
          [dataTask resume];
     }];
+}
+
+- (BOOL)isProxyStatus:(NSString *)urlString {
+    
+    BOOL proxyStatus = NO;
+    NSDictionary *proxySettings = (__bridge NSDictionary *)CFNetworkCopySystemProxySettings();
+    NSArray *proxies = (__bridge NSArray *)CFNetworkCopyProxiesForURL((__bridge CFURLRef)[NSURL URLWithString:urlString], (CFDictionaryRef)CFBridgingRetain(proxySettings));
+    NSDictionary *settings = [proxies objectAtIndex:0];
+    LZNetworkingLog(@"host=%@", [settings objectForKey:(NSString *)kCFProxyHostNameKey]);
+    LZNetworkingLog(@"port=%@", [settings objectForKey:(NSString *)kCFProxyPortNumberKey]);
+    LZNetworkingLog(@"type=%@", [settings objectForKey:(NSString *)kCFProxyTypeKey]);
+    if ([[settings objectForKey:(NSString *)kCFProxyTypeKey] isEqualToString:@"kCFProxyTypeNone"]) {
+        //没有设置代理
+        proxyStatus = NO;
+    } else {
+        //设置代理了
+        proxyStatus = YES;
+    }
+    return proxyStatus;
 }
 
 - (void)setURLProtocol:(Class)customUrlProtocol {
