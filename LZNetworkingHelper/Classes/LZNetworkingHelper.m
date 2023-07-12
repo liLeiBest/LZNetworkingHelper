@@ -319,6 +319,10 @@
         
         NSURL *fileUrl = [NSURL fileURLWithPath:source];
         return [self uploadTaskRequest:request fromFile:fileUrl progress:uploadProgress success:success failure:failure];
+    } else if ([source isKindOfClass:[UIImage class]]) {
+        
+        source = UIImageJPEGRepresentation((UIImage *)source, 0.9);
+        return [self uploadTaskRequest:request fromData:source progress:uploadProgress success:success failure:failure];
     } else {
         return [self uploadTaskRequest:request progress:uploadProgress success:success failure:failure];
     }
